@@ -106,6 +106,7 @@ function buildNovelPdfHtml(
 export interface NovelEditorHandle {
   getPdfHtml: (settings: ExportSettings) => string
   getPlainText: () => string
+  saveNow: () => Promise<void>
 }
 
 const NovelEditor = React.forwardRef<NovelEditorHandle, { project: Project; exportSettings: ExportSettings }>(
@@ -118,8 +119,18 @@ function NovelEditor({ project, exportSettings }, ref) {
   const [focusMode, setFocusMode] = useState(false)
   const [manuscriptView, setManuscriptView] = useState(false)
   const [showAIWriter, setShowAIWriter] = useState(false)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [, setTick] = useState(0)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const liveContents = useRef<Record<string, string>>({ '1': '' })
+  const chaptersRef = useRef<Chapter[]>([])
+
+  // Tick every 30s so "X min ago" stays current
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30000)
+    return () => clearInterval(id)
+  }, [])
 
   // Load from disk on mount
   useEffect(() => {
@@ -128,26 +139,34 @@ function NovelEditor({ project, exportSettings }, ref) {
       const data = raw as { chapters?: Chapter[] }
       if (data?.chapters?.length) {
         setChapters(data.chapters)
+        chaptersRef.current = data.chapters
         data.chapters.forEach((c) => { liveContents.current[c.id] = c.content })
         setActiveChapter(data.chapters[0].id)
       }
     }).catch(() => {})
   }, [project.path])
 
+  const doSave = useCallback(async (updatedChapters: Chapter[]) => {
+    setSaveStatus('saving')
+    const wordCount = updatedChapters.reduce((total, c) => {
+      return total + (liveContents.current[c.id] ?? c.content).trim().split(/\s+/).filter(Boolean).length
+    }, 0)
+    await window.api.saveContent(project.path, { chapters: updatedChapters, wordCount })
+    setLastSaved(new Date())
+    setSaveStatus('saved')
+    setTimeout(() => setSaveStatus('idle'), 2000)
+  }, [project.path])
+
   const scheduleSave = useCallback((updatedChapters: Chapter[]) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      const wordCount = updatedChapters.reduce((total, c) => {
-        return total + (liveContents.current[c.id] ?? c.content).trim().split(/\s+/).filter(Boolean).length
-      }, 0)
-      window.api.saveContent(project.path, { chapters: updatedChapters, wordCount })
-    }, 1500)
-  }, [project.path])
+    saveTimer.current = setTimeout(() => doSave(updatedChapters), 1500)
+  }, [doSave])
 
   const handleBlur = useCallback((id: string, content: string) => {
     liveContents.current[id] = content
     setChapters((prev) => {
       const updated = prev.map((c) => (c.id === id ? { ...c, content } : c))
+      chaptersRef.current = updated
       scheduleSave(updated)
       return updated
     })
@@ -187,18 +206,18 @@ function NovelEditor({ project, exportSettings }, ref) {
 
   function insertAIText(text: string): void {
     if (!active) return
-    // Append to existing content, separated by a blank line
     const existing = (liveContents.current[active.id] ?? active.content).trimEnd()
     const newContent = existing ? `${existing}\n\n${text}` : text
     liveContents.current[active.id] = newContent
 
-    // Write into the live DOM node so ChapterEditor reflects it immediately
     const el = document.querySelector<HTMLElement>('.prose-editor')
     if (el) el.textContent = newContent
 
     setChapters((prev) => {
       const updated = prev.map((c) => c.id === active.id ? { ...c, content: newContent } : c)
-      scheduleSave(updated)
+      chaptersRef.current = updated
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      doSave(updated)
       return updated
     })
   }
@@ -217,6 +236,17 @@ function NovelEditor({ project, exportSettings }, ref) {
 
   const active = chapters.find((c) => c.id === activeChapter)
 
+  function lastSavedLabel(): string {
+    if (saveStatus === 'saving') return 'Saving...'
+    if (saveStatus === 'saved') return 'Saved'
+    if (!lastSaved) return ''
+    const diff = Math.floor((Date.now() - lastSaved.getTime()) / 1000)
+    if (diff < 60) return 'Saved just now'
+    if (diff < 120) return 'Last saved 1 min ago'
+    if (diff < 3600) return `Last saved ${Math.floor(diff / 60)} min ago`
+    return `Last saved ${lastSaved.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+  }
+
   const wordCount = chapters.reduce((total, c) => {
     return total + (liveContents.current[c.id] ?? c.content).trim().split(/\s+/).filter(Boolean).length
   }, 0)
@@ -233,7 +263,8 @@ function NovelEditor({ project, exportSettings }, ref) {
         const content = liveContents.current[c.id] ?? c.content
         return `${c.title}\n\n${content}`
       }).join('\n\n---\n\n')
-    }
+    },
+    saveNow: () => doSave(chaptersRef.current),
   }))
 
   const smfStyle: React.CSSProperties = {
@@ -399,6 +430,14 @@ function NovelEditor({ project, exportSettings }, ref) {
         <span>{activeWordCount.toLocaleString()} words this chapter</span>
         <span>·</span>
         <span>{wordCount.toLocaleString()} total</span>
+        {lastSavedLabel() && (
+          <>
+            <span>·</span>
+            <span className={saveStatus === 'saving' ? 'text-gray-400 animate-pulse' : saveStatus === 'saved' ? 'text-green-600' : 'text-gray-400'}>
+              {lastSavedLabel()}
+            </span>
+          </>
+        )}
         <span className="ml-auto" />
         <button
           onClick={() => setFocusMode((v) => !v)}

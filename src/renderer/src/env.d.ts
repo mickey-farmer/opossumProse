@@ -2,6 +2,8 @@ interface Window {
   api: {
     getProjectsDir: () => Promise<string>
     setProjectsDir: (dir: string) => Promise<string>
+    isFirstRun: () => Promise<boolean>
+    pickProjectsDir: () => Promise<string | null>
     listProjects: () => Promise<import('./stores/projectStore').Project[]>
     createProject: (project: Omit<import('./stores/projectStore').Project, 'path'>) => Promise<import('./stores/projectStore').Project>
     saveContent: (projectPath: string, content: unknown) => Promise<boolean>
@@ -20,5 +22,7 @@ interface Window {
     geminiCheck: (projectPath: string, content: string, type: string) => Promise<{ issues: { type: string; description: string; suggestion: string }[] }>
     geminiWrite: (prompt: string, context: string, mode: string) => Promise<string>
     onGeminiChunk: (cb: (text: string) => void) => () => void
+    geminiChat: (messages: { role: string; text: string }[], context: string) => Promise<string>
+    onGeminiChatChunk: (cb: (delta: string) => void) => () => void
   }
 }

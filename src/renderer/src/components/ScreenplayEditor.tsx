@@ -8,6 +8,8 @@ export interface ScreenplayEditorHandle {
   getPdfHtml: () => string
   getDocxLines: () => { element: string; text: string }[]
   getAllText: () => string
+  openAIWriter: (mode: AIWriterMode) => void
+  saveNow: () => Promise<void>
 }
 
 type ScreenplayElement =
@@ -392,6 +394,9 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
   const [focusMode, setFocusMode] = useState(false)
   const [showBreakdown, setShowBreakdown] = useState(false)
   const [aiWriterMode, setAiWriterMode] = useState<AIWriterMode | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [, setTick] = useState(0)
 
   const titlePage: TitlePage = project.titlePage ?? { title: project.name, subtitle: '', authorName: '', contact: '' }
   const revisionColor = REVISION_COLORS.find((c) => c.value === (project.revisionColor ?? 'white')) ?? REVISION_COLORS[0]
@@ -436,16 +441,28 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
     setDropdownPos({ top: rect.bottom + 4, left: rect.left })
   }, [dropdownLineId])
 
+  // Tick every 30s so "X min ago" stays current
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 30000)
+    return () => clearInterval(id)
+  }, [])
+
+  const doSave = useCallback(async (updatedLines: LineData[]) => {
+    setSaveStatus('saving')
+    const wordCount = updatedLines
+      .map((l) => (liveTexts.current[l.id] ?? l.text).trim().split(/\s+/).filter(Boolean).length)
+      .reduce((a, b) => a + b, 0)
+    await window.api.saveContent(project.path, { lines: updatedLines, wordCount })
+    setLastSaved(new Date())
+    setSaveStatus('saved')
+    setTimeout(() => setSaveStatus('idle'), 2000)
+  }, [project.path])
+
   // Debounced save
   const scheduleSave = useCallback((updatedLines: LineData[]) => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      const wordCount = updatedLines
-        .map((l) => (liveTexts.current[l.id] ?? l.text).trim().split(/\s+/).filter(Boolean).length)
-        .reduce((a, b) => a + b, 0)
-      window.api.saveContent(project.path, { lines: updatedLines, wordCount })
-    }, 1500)
-  }, [project.path])
+    saveTimer.current = setTimeout(() => doSave(updatedLines), 1500)
+  }, [doSave])
 
   // CONT'D calculation
   const contdLineIds = useMemo(() => {
@@ -672,8 +689,9 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
       })
       const next = [...prev]
       next.splice(insertAt, 0, ...builtLines)
-      scheduleSave(next)
-      // Set focus to the last inserted line
+      // Save immediately — don't debounce AI inserts
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      doSave(next)
       const lastId = builtLines[builtLines.length - 1].id
       setActiveLine(lastId)
       setActiveElement(builtLines[builtLines.length - 1].element)
@@ -813,12 +831,25 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
     </body></html>`
   }
 
+  function lastSavedLabel(): string {
+    if (saveStatus === 'saving') return 'Saving...'
+    if (saveStatus === 'saved') return 'Saved'
+    if (!lastSaved) return ''
+    const diff = Math.floor((Date.now() - lastSaved.getTime()) / 1000)
+    if (diff < 60) return 'Saved just now'
+    if (diff < 120) return 'Last saved 1 min ago'
+    if (diff < 3600) return `Last saved ${Math.floor(diff / 60)} min ago`
+    return `Last saved ${lastSaved.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+  }
+
   // Expose to parent (Editor.tsx) via ref
   useImperativeHandle(ref, () => ({
     getFountainContent: linesToFountain,
     getPdfHtml: buildPdfHtml,
     getDocxLines: () => linesRef.current.map((l) => ({ element: l.element, text: liveTexts.current[l.id] ?? l.text })),
     getAllText: () => linesRef.current.map((l) => liveTexts.current[l.id] ?? l.text).join('\n'),
+    openAIWriter: (mode: AIWriterMode) => setAiWriterMode(mode),
+    saveNow: () => doSave(linesRef.current),
   }))
 
   const wordCount = lines
@@ -929,23 +960,6 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
         <div className="mt-4 border-t border-gray-700 pt-3">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Navigator</div>
           <Navigator lines={lines} activeLine={activeLine} onNavigate={navigateToLine} isStagePlay={isStagePlay} />
-        </div>
-
-        {/* AI Write */}
-        <div className="mt-4 border-t border-gray-700 pt-3">
-          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Write with AI</div>
-          <button
-            onClick={() => setAiWriterMode('screenplay-scene')}
-            className="block w-full text-left text-xs px-2 py-1.5 rounded transition-colors text-opossum-400 hover:bg-gray-800 flex items-center gap-1"
-          >
-            ✦ Write a scene
-          </button>
-          <button
-            onClick={() => setAiWriterMode('screenplay-act')}
-            className="block w-full text-left text-xs px-2 py-1.5 rounded transition-colors text-opossum-400 hover:bg-gray-800 flex items-center gap-1"
-          >
-            ✦ Write an act
-          </button>
         </div>
 
         {/* Breakdown */}
@@ -1087,6 +1101,14 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
           <div className="w-2 h-2 rounded-full border border-gray-400" style={{ backgroundColor: revisionColor.hex }} />
           <span>{revisionColor.label}</span>
         </div>
+        {lastSavedLabel() && (
+          <>
+            <span>·</span>
+            <span className={saveStatus === 'saving' ? 'text-gray-400 animate-pulse' : saveStatus === 'saved' ? 'text-green-600' : 'text-gray-400'}>
+              {lastSavedLabel()}
+            </span>
+          </>
+        )}
         <span className="ml-auto" />
         <button
           onClick={() => setFocusMode((v) => !v)}

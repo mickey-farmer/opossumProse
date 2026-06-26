@@ -29,13 +29,42 @@ export default function Dashboard(): JSX.Element {
   const [newType, setNewType] = useState<ProjectType>('novel')
   const [titlePage, setTitlePage] = useState<TitlePage>({ title: '', subtitle: '', authorName: '', contact: '' })
   const [loading, setLoading] = useState(true)
+  const [firstRun, setFirstRun] = useState(false)
+  const [projectsDir, setProjectsDir] = useState('')
 
   useEffect(() => {
-    window.api.listProjects().then((list) => {
+    async function init(): Promise<void> {
+      const isFirst = await window.api.isFirstRun()
+      if (isFirst) {
+        setFirstRun(true)
+        setLoading(false)
+        return
+      }
+      const dir = await window.api.getProjectsDir()
+      setProjectsDir(dir)
+      const list = await window.api.listProjects()
       setProjects(list)
       setLoading(false)
-    })
+    }
+    init()
   }, [setProjects])
+
+  async function handlePickFolder(): Promise<void> {
+    const dir = await window.api.pickProjectsDir()
+    if (!dir) return
+    setProjectsDir(dir)
+    setFirstRun(false)
+    const list = await window.api.listProjects()
+    setProjects(list)
+  }
+
+  async function handleChangeFolder(): Promise<void> {
+    const dir = await window.api.pickProjectsDir()
+    if (!dir) return
+    setProjectsDir(dir)
+    const list = await window.api.listProjects()
+    setProjects(list)
+  }
 
   function openModal(): void {
     setStep('type')
@@ -87,14 +116,46 @@ export default function Dashboard(): JSX.Element {
 
   const isScript = newType === 'screenplay' || newType === 'stageplay'
 
+  if (firstRun) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-gray-50">
+        <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">🦝</div>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome to OpossumProse</h1>
+          <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+            Choose where to save your projects. For cross-machine sync, point this at a folder inside Google Drive.
+          </p>
+          <button
+            onClick={handlePickFolder}
+            className="w-full bg-opossum-600 hover:bg-opossum-700 text-white font-medium px-6 py-3 rounded-xl transition-colors"
+          >
+            Choose Projects Folder
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Titlebar */}
       <div className="titlebar-drag h-12 flex items-center px-4 bg-white/80 backdrop-blur border-b border-gray-200 shrink-0">
-        <div className="pl-20 flex-1 flex items-center">
+        <div className="pl-20 flex-1 flex items-center gap-3">
           <span className="font-semibold text-gray-800 text-sm">OpossumProse</span>
+          {projectsDir && (
+            <span className="text-xs text-gray-400 truncate max-w-xs" title={projectsDir}>
+              {projectsDir.replace(/^.*?([^/]+\/[^/]+)$/, '…/$1')}
+            </span>
+          )}
         </div>
-        <div className="no-drag">
+        <div className="no-drag flex items-center gap-2">
+          <button
+            onClick={handleChangeFolder}
+            title="Change projects folder"
+            className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            ⚙ Folder
+          </button>
           <button
             onClick={openModal}
             className="bg-opossum-600 hover:bg-opossum-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
