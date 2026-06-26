@@ -64,6 +64,22 @@ app.whenReady().then(() => {
     return dir
   })
 
+  ipcMain.handle('is-first-run', () => {
+    return !store.has('projectsDir')
+  })
+
+  ipcMain.handle('pick-projects-dir', async () => {
+    const { filePaths, canceled } = await dialog.showOpenDialog({
+      title: 'Choose your Projects folder',
+      buttonLabel: 'Select Folder',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (canceled || !filePaths[0]) return null
+    store.set('projectsDir', filePaths[0])
+    ensureProjectsDir()
+    return filePaths[0]
+  })
+
   // ── Projects list ─────────────────────────────────────────────────
   ipcMain.handle('list-projects', async () => {
     const dir = getProjectsDir()
@@ -259,7 +275,7 @@ app.whenReady().then(() => {
   })
 
   // ── Gemini AI ─────────────────────────────────────────────────────
-  const GEMINI_API_KEY = (store.get('geminiApiKey') as string | undefined) || process.env.GEMINI_API_KEY || ''
+  const GEMINI_API_KEY = 'REDACTED_API_KEY'
 
   // ── Gemini AI writer (streaming via SSE back to renderer) ─────────
   ipcMain.handle('gemini-write', async (event, prompt: string, context: string, mode: string) => {
@@ -303,7 +319,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
       let fullText = ''
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
         timeout: 60000
@@ -360,7 +376,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
     return new Promise((resolve) => {
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
       }, (res) => {
@@ -378,6 +394,69 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
         })
       })
       req.on('error', () => resolve({ issues: [] }))
+      req.write(body)
+      req.end()
+    })
+  })
+
+  // ── Gemini chat (streaming) ───────────────────────────────────────
+  ipcMain.handle('gemini-chat', async (event, messages: { role: string; text: string }[], context: string) => {
+    const systemInstruction = `You are a creative writing assistant embedded in OpossumProse, a writing tool for screenplays, stage plays, and novels. You have access to the user's current work and help them brainstorm, develop characters, fix dialogue, explore themes, and anything else related to their writing. Be conversational, specific, and concise.`
+
+    const contents: { role: string; parts: { text: string }[] }[] = []
+
+    // First user turn carries the script/chapter context
+    if (context.trim()) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: `Here is my current work for context:\n\n${context.slice(0, 6000)}\n\n---\n\n${messages[0]?.text ?? ''}` }]
+      })
+    }
+
+    // Remaining turns (or all turns if no context)
+    const startIdx = context.trim() ? 1 : 0
+    for (const msg of messages.slice(startIdx)) {
+      contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] })
+    }
+
+    const body = JSON.stringify({
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents,
+      generationConfig: { temperature: 0.9, maxOutputTokens: 2048 }
+    })
+
+    return new Promise<string>((resolve, reject) => {
+      let fullText = ''
+      const req = https.request({
+        hostname: 'generativelanguage.googleapis.com',
+        path: `/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        timeout: 60000
+      }, (res) => {
+        let buf = ''
+        res.on('data', (chunk: Buffer) => {
+          buf += chunk.toString()
+          const lines = buf.split('\n')
+          buf = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const json = line.slice(6).trim()
+            if (json === '[DONE]') continue
+            try {
+              const parsed = JSON.parse(json)
+              const delta = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+              if (delta) {
+                fullText += delta
+                event.sender.send('gemini-chat-chunk', delta)
+              }
+            } catch { /* partial SSE line */ }
+          }
+        })
+        res.on('end', () => resolve(fullText))
+      })
+      req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out')) })
+      req.on('error', (err) => reject(err))
       req.write(body)
       req.end()
     })

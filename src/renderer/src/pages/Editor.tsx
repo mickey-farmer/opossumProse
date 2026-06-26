@@ -8,6 +8,7 @@ import NotesPanel from '../components/NotesPanel'
 import OutlinePanel from '../components/OutlinePanel'
 import FindReplace from '../components/FindReplace'
 import ContinuityChecker from '../components/ContinuityChecker'
+import AIChat from '../components/AIChat'
 
 const TABS: { id: EditorTab; label: string }[] = [
   { id: 'write', label: 'Write' },
@@ -48,6 +49,8 @@ export default function Editor(): JSX.Element {
   const [showSettings, setShowSettings] = useState(false)
   const [showFindReplace, setShowFindReplace] = useState(false)
   const [showContinuity, setShowContinuity] = useState(false)
+  const [showAIMenu, setShowAIMenu] = useState(false)
+  const [showChat, setShowChat] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [goalInput, setGoalInput] = useState('')
 
@@ -59,12 +62,16 @@ export default function Editor(): JSX.Element {
   const exportSettings: ExportSettings = activeProject.exportSettings ?? defaultExportSettings(activeProject.type)
   const wordCountGoal = activeProject.wordCountGoal ?? 0
 
-  // Cmd+F → Find & Replace
+  // Keyboard shortcuts
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
       if (e.metaKey && e.key === 'f') {
         e.preventDefault()
         setShowFindReplace((v) => !v)
+      }
+      if (e.metaKey && e.key === 's') {
+        e.preventDefault()
+        screplayRef.current?.saveNow() ?? novelRef.current?.saveNow()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -309,14 +316,50 @@ export default function Editor(): JSX.Element {
             ⌕
           </button>
 
-          {/* AI Continuity */}
-          <button
-            onClick={() => setShowContinuity((v) => !v)}
-            title="AI Continuity Check"
-            className={`text-sm px-2 py-1 rounded-lg border transition-colors ${showContinuity ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-500 hover:text-gray-900 hover:border-gray-400'}`}
-          >
-            ✦
-          </button>
+          {/* AI dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowAIMenu((v) => !v); setShowExportMenu(false); setShowSettings(false) }}
+              className={`text-sm px-2.5 py-1 rounded-lg border transition-colors ${showAIMenu ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 text-gray-500 hover:text-gray-900 hover:border-gray-400'}`}
+            >
+              ✦ AI ▾
+            </button>
+            {showAIMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowAIMenu(false)} />
+                <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden z-50 w-52">
+                  <button
+                    onClick={() => { setShowAIMenu(false); setShowChat((v) => !v) }}
+                    className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100"
+                  >
+                    ✦ Chat with AI
+                  </button>
+                  {isScript && (
+                    <>
+                      <button
+                        onClick={() => { setShowAIMenu(false); screplayRef.current?.openAIWriter('screenplay-scene') }}
+                        className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100"
+                      >
+                        ✦ Write a scene
+                      </button>
+                      <button
+                        onClick={() => { setShowAIMenu(false); screplayRef.current?.openAIWriter('screenplay-act') }}
+                        className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100"
+                      >
+                        ✦ Write an act
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => { setShowAIMenu(false); setShowContinuity(true) }}
+                    className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors"
+                  >
+                    ✦ Continuity check
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Export */}
           <div className="relative ml-1">
@@ -392,19 +435,32 @@ export default function Editor(): JSX.Element {
         />
       )}
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
-        {activeEditorTab === 'write' && (
-          <>
-            {isScript && <ScreenplayEditor ref={screplayRef} project={activeProject} exportSettings={exportSettings} />}
-            {activeProject.type === 'novel' && (
-              <NovelEditor ref={novelRef} project={activeProject} exportSettings={exportSettings} />
-            )}
-          </>
+      {/* Tab content + chat panel */}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden">
+          {activeEditorTab === 'write' && (
+            <>
+              {isScript && <ScreenplayEditor ref={screplayRef} project={activeProject} exportSettings={exportSettings} />}
+              {activeProject.type === 'novel' && (
+                <NovelEditor ref={novelRef} project={activeProject} exportSettings={exportSettings} />
+              )}
+            </>
+          )}
+          {activeEditorTab === 'characters' && <CharacterDirectory project={activeProject} />}
+          {activeEditorTab === 'notes' && <NotesPanel project={activeProject} />}
+          {activeEditorTab === 'outline' && <OutlinePanel project={activeProject} />}
+        </div>
+        {showChat && (
+          <AIChat
+            projectName={activeProject.name}
+            getContext={() => {
+              if (isScript && screplayRef.current) return screplayRef.current.getAllText()
+              if (!isScript && novelRef.current) return novelRef.current.getPlainText()
+              return ''
+            }}
+            onClose={() => setShowChat(false)}
+          />
         )}
-        {activeEditorTab === 'characters' && <CharacterDirectory project={activeProject} />}
-        {activeEditorTab === 'notes' && <NotesPanel project={activeProject} />}
-        {activeEditorTab === 'outline' && <OutlinePanel project={activeProject} />}
       </div>
     </div>
   )

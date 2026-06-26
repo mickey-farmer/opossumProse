@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('api', {
   getProjectsDir: () => ipcRenderer.invoke('get-projects-dir'),
   setProjectsDir: (dir: string) => ipcRenderer.invoke('set-projects-dir', dir),
+  isFirstRun: () => ipcRenderer.invoke('is-first-run'),
+  pickProjectsDir: () => ipcRenderer.invoke('pick-projects-dir'),
   listProjects: () => ipcRenderer.invoke('list-projects'),
   createProject: (project: unknown) => ipcRenderer.invoke('create-project', project),
   saveContent: (projectPath: string, content: unknown) =>
@@ -33,5 +35,12 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_event: Electron.IpcRendererEvent, text: string) => cb(text)
     ipcRenderer.on('gemini-write-chunk', handler)
     return () => ipcRenderer.removeListener('gemini-write-chunk', handler)
+  },
+  geminiChat: (messages: { role: string; text: string }[], context: string) =>
+    ipcRenderer.invoke('gemini-chat', messages, context),
+  onGeminiChatChunk: (cb: (delta: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, delta: string) => cb(delta)
+    ipcRenderer.on('gemini-chat-chunk', handler)
+    return () => ipcRenderer.removeListener('gemini-chat-chunk', handler)
   },
 })

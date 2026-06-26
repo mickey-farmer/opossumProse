@@ -199,10 +199,9 @@ export default function AIWriter({ mode, projectName, contextText, chapterTitle,
               {isScript(mode) ? (
                 // Formatted screenplay preview
                 <div style={{ fontFamily: 'Courier New, Courier, monospace', fontSize: '11pt', lineHeight: '1.5' }}>
-                  {(generating && scriptPreview.length === 0 ? (
+                  {generating && scriptPreview.length === 0 ? (
                     <div className="text-gray-400 animate-pulse">Generating…</div>
-                  ) : scriptPreview).map((line, i) => {
-                    if (typeof line === 'string') return null
+                  ) : scriptPreview.map((line, i) => {
                     switch (line.element) {
                       case 'scene-heading':
                         return <div key={i} style={{ fontWeight: 'bold', textTransform: 'uppercase', marginTop: '16px' }}>{line.text}</div>
