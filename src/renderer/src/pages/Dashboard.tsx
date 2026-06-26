@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useProjectStore, ProjectType, Project, TitlePage } from '../stores/projectStore'
+import appIcon from '../../assets/icon.png'
 
 const PROJECT_TYPE_META: Record<ProjectType, { label: string; icon: string; desc: string }> = {
   novel: {
@@ -120,7 +121,7 @@ export default function Dashboard(): JSX.Element {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-gray-50">
         <div className="bg-white rounded-2xl shadow-xl p-10 max-w-md w-full text-center">
-          <div className="text-6xl mb-4">🦝</div>
+          <img src={appIcon} alt="OpossumProse" className="w-24 h-24 mb-4 rounded-2xl" />
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">Welcome to OpossumProse</h1>
           <p className="text-gray-500 text-sm mb-6 leading-relaxed">
             Choose where to save your projects. For cross-machine sync, point this at a folder inside Google Drive.
@@ -345,7 +346,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function EmptyState({ onNew }: { onNew: () => void }): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center h-full text-center">
-      <div className="text-6xl mb-4">🦝</div>
+      <div className="text-6xl mb-4">🐾</div>
       <h1 className="text-2xl font-semibold text-gray-800 mb-2">Welcome to OpossumProse</h1>
       <p className="text-gray-500 mb-6 max-w-sm">
         Your creative companion for novels, screenplays, and stage plays. Start by creating your
