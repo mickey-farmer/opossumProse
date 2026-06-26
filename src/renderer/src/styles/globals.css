@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* macOS traffic-light window drag area */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Screenplay / Novel editor base */
+.prose-editor {
+  outline: none;
+}
+
+.prose-editor p {
+  margin: 0;
+}
+
+/* Placeholder text for empty contentEditable lines */
+[contenteditable][data-placeholder]:empty::before {
+  content: attr(data-placeholder);
+  color: #c0c0c0;
+  pointer-events: none;
+  font-style: normal;
+}
