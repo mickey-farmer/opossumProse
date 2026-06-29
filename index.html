@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpossumProse — Writer Companion App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0f0f14;
+      --surface:     #17171f;
+      --surface-2:   #1f1f2c;
+      --border:      #2a2a38;
+      --text:        #e8e8f0;
+      --text-muted:  #7878a0;
+      --text-dim:    #4a4a68;
+      --accent:      #c084fc;
+      --accent-warm: #fb923c;
+      --accent-blue: #60a5fa;
+      --accent-green:#4ade80;
+      --sidebar-w:   270px;
+      --topbar-h:    58px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── TOP BAR ───────────────────────────────────────────────────── */
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: var(--topbar-h);
+      background: rgba(15,15,20,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 16px; padding: 0 28px;
+    }
+
+    #topbar .logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; flex-shrink: 0;
+    }
+    #topbar .logo img { width: 32px; height: 32px; border-radius: 8px; }
+    #topbar .logo-text {
+      font-family: 'Lora', serif; font-weight: 600; font-size: 18px;
+      color: var(--text);
+      letter-spacing: -.3px;
+    }
+    #topbar .logo-text span { color: var(--accent); }
+
+    #topbar .badge {
+      font-size: 11px; font-weight: 600;
+      background: var(--surface-2); color: var(--text-muted);
+      border: 1px solid var(--border);
+      padding: 2px 8px; border-radius: 20px;
+      letter-spacing: .5px;
+    }
+
+    #topbar nav { margin-left: auto; display: flex; gap: 6px; }
+    #topbar nav a {
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      text-decoration: none; padding: 6px 12px; border-radius: 6px;
+      transition: all .15s;
+    }
+    #topbar nav a:hover { color: var(--text); background: var(--surface-2); }
+
+    /* ── HERO ──────────────────────────────────────────────────────── */
+    #hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 120px 40px 80px;
+      text-align: center;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(192,132,252,.14) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 80%, rgba(251,146,60,.08) 0%, transparent 60%),
+        var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+
+    #hero .hero-icon {
+      width: 88px; height: 88px; border-radius: 22px;
+      box-shadow: 0 0 0 1px var(--border), 0 20px 60px rgba(192,132,252,.25);
+      margin-bottom: 32px;
+    }
+
+    #hero h1 {
+      font-family: 'Lora', serif; font-size: clamp(36px, 6vw, 60px);
+      font-weight: 600; letter-spacing: -1px; line-height: 1.15;
+      margin-bottom: 20px;
+    }
+    #hero h1 em { font-style: italic; color: var(--accent); }
+
+    #hero .tagline {
+      font-size: clamp(16px, 2.2vw, 20px); font-weight: 300;
+      color: var(--text-muted); max-width: 560px; margin: 0 auto 40px;
+    }
+
+    .hero-pills {
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 48px;
+    }
+    .hero-pill {
+      font-size: 13px; font-weight: 500;
+      padding: 6px 14px; border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--surface);
+    }
+    .hero-pill.screen { border-color: rgba(96,165,250,.4); color: #93c5fd; }
+    .hero-pill.novel  { border-color: rgba(251,146,60,.4);  color: #fdba74; }
+    .hero-pill.stage  { border-color: rgba(74,222,128,.4);  color: #86efac; }
+
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: #0f0f14; font-weight: 600; font-size: 14px;
+      padding: 12px 24px; border-radius: 8px; text-decoration: none;
+      transition: opacity .15s; box-shadow: 0 8px 24px rgba(192,132,252,.3);
+    }
+    .hero-cta:hover { opacity: .85; }
+
+    .hero-feature-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 16px; max-width: 780px; margin: 64px auto 0;
+      text-align: left;
+    }
+    .hero-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px 22px;
+      transition: border-color .2s;
+    }
+    .hero-card:hover { border-color: var(--accent); }
+    .hero-card .hc-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; margin-bottom: 12px;
+    }
+    .hc-icon.purple { background: rgba(192,132,252,.15); }
+    .hc-icon.orange { background: rgba(251,146,60,.15); }
+    .hc-icon.blue   { background: rgba(96,165,250,.15); }
+    .hc-icon.green  { background: rgba(74,222,128,.15); }
+    .hc-icon.pink   { background: rgba(244,114,182,.15); }
+    .hc-icon.yellow { background: rgba(250,204,21,.15); }
+    .hero-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .hero-card p  { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── DOCS LAYOUT ───────────────────────────────────────────────── */
+    #docs-layout {
+      display: flex;
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ───────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      position: sticky; top: var(--topbar-h);
+      height: calc(100vh - var(--topbar-h));
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0 40px;
+    }
+
+    #sidebar::-webkit-scrollbar { width: 4px; }
+    #sidebar::-webkit-scrollbar-track { background: transparent; }
+    #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .nav-section {
+      margin-bottom: 28px;
+    }
+    .nav-section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--text-dim);
+      padding: 0 20px 8px;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13.5px; font-weight: 400; color: var(--text-muted);
+      text-decoration: none;
+      padding: 7px 20px; border-radius: 0;
+      transition: all .12s;
+      border-left: 2px solid transparent;
+      margin-left: -1px; /* align with border-right */
+    }
+    .nav-link .nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,.04); }
+    .nav-link.active {
+      color: var(--accent); font-weight: 500;
+      border-left-color: var(--accent);
+      background: rgba(192,132,252,.08);
+    }
+    .nav-sub-link {
+      font-size: 12.5px; color: var(--text-dim);
+      text-decoration: none;
+      display: block; padding: 4px 20px 4px 48px;
+      transition: color .12s;
+    }
+    .nav-sub-link:hover { color: var(--text-muted); }
+
+    /* ── CONTENT ───────────────────────────────────────────────────── */
+    #content {
+      flex: 1; min-width: 0;
+      padding: 56px 64px 120px;
+      max-width: 860px;
+    }
+
+    /* Sections */
+    .doc-section {
+      margin-bottom: 80px;
+      scroll-margin-top: calc(var(--topbar-h) + 32px);
+    }
+
+    .section-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .section-eyebrow.warm   { color: var(--accent-warm); }
+    .section-eyebrow.blue   { color: var(--accent-blue); }
+    .section-eyebrow.green  { color: var(--accent-green); }
+
+    h2.section-title {
+      font-family: 'Lora', serif; font-size: 30px; font-weight: 600;
+      letter-spacing: -.5px; margin-bottom: 16px; line-height: 1.25;
+    }
+    h3.subsection-title {
+      font-size: 17px; font-weight: 600; margin: 36px 0 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    h3.subsection-title::before {
+      content: ''; display: block;
+      width: 4px; height: 16px; border-radius: 2px;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+    h3.subsection-title.warm::before { background: var(--accent-warm); }
+    h3.subsection-title.blue::before { background: var(--accent-blue); }
+    h3.subsection-title.green::before { background: var(--accent-green); }
+
+    .lead {
+      font-size: 16px; color: var(--text-muted); line-height: 1.7;
+      margin-bottom: 28px; max-width: 680px;
+    }
+
+    p { font-size: 14.5px; color: var(--text-muted); line-height: 1.75; margin-bottom: 16px; }
+
+    .divider {
+      border: none; border-top: 1px solid var(--border);
+      margin: 48px 0;
+    }
+
+    /* Callout */
+    .callout {
+      border-radius: 10px; padding: 16px 20px; margin: 24px 0;
+      font-size: 13.5px; line-height: 1.6;
+      border-left: 3px solid;
+    }
+    .callout.info  { background: rgba(96,165,250,.08);  border-color: var(--accent-blue);  color: #a5c8f8; }
+    .callout.tip   { background: rgba(74,222,128,.08);  border-color: var(--accent-green); color: #a0e8b4; }
+    .callout.warn  { background: rgba(251,146,60,.08);  border-color: var(--accent-warm);  color: #fdba74; }
+    .callout strong { font-weight: 600; display: block; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* Feature list */
+    .feature-list {
+      list-style: none; display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; margin: 20px 0;
+    }
+    .feature-list li {
+      font-size: 13.5px; color: var(--text-muted);
+      display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; line-height: 1.5;
+    }
+    .feature-list li .fl-icon { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+    .feature-list li.warm .fl-icon { color: var(--accent-warm); }
+    .feature-list li.blue .fl-icon { color: var(--accent-blue); }
+    .feature-list li.green .fl-icon { color: var(--accent-green); }
+
+    /* Element table */
+    .el-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13.5px; }
+    .el-table th {
+      text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 700;
+      letter-spacing: .8px; text-transform: uppercase; color: var(--text-dim);
+      border-bottom: 1px solid var(--border); background: var(--surface);
+    }
+    .el-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
+    .el-table tr:last-child td { border-bottom: none; }
+    .el-table tr:hover td { background: rgba(255,255,255,.025); }
+    .el-table td:first-child { font-weight: 500; color: var(--text); }
+    .el-table code {
+      font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+      background: var(--surface-2); padding: 2px 6px; border-radius: 4px;
+      border: 1px solid var(--border); color: var(--accent);
+    }
+
+    /* Kbd */
+    kbd {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-bottom-width: 2px; padding: 2px 7px; border-radius: 5px;
+      color: var(--text); white-space: nowrap;
+    }
+
+    /* Inline code */
+    code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: var(--surface-2); padding: 2px 6px; border-radius: 4px;
+      border: 1px solid var(--border); color: var(--accent);
+    }
+
+    /* Steps */
+    .steps { list-style: none; margin: 20px 0; counter-reset: steps; }
+    .steps li {
+      counter-increment: steps;
+      display: flex; gap: 14px; margin-bottom: 16px;
+      font-size: 14px; color: var(--text-muted); line-height: 1.6;
+    }
+    .steps li::before {
+      content: counter(steps);
+      flex-shrink: 0;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--surface-2); border: 1px solid var(--border);
+      color: var(--accent); font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+
+    /* Color chips */
+    .color-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+    .color-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 20px;
+      font-size: 12.5px; font-weight: 500;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .color-chip .swatch {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1px solid rgba(0,0,0,.2);
+    }
+
+    /* Category chips */
+    .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    .cat-chip {
+      font-size: 12px; font-weight: 500;
+      padding: 5px 12px; border-radius: 20px;
+      border: 1px solid var(--border); color: var(--text-muted);
+      background: var(--surface);
+    }
+
+    /* Two column layout helper */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+    .info-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 20px;
+    }
+    .info-card h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+    .info-card p, .info-card li { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+    .info-card ul { list-style: none; }
+    .info-card ul li::before { content: '·'; margin-right: 6px; color: var(--accent); }
+
+    /* AI section highlight */
+    .ai-panel {
+      background: linear-gradient(135deg, rgba(192,132,252,.07), rgba(96,165,250,.05));
+      border: 1px solid rgba(192,132,252,.2);
+      border-radius: 12px; padding: 24px 28px; margin: 24px 0;
+    }
+    .ai-panel h4 { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: var(--accent); }
+    .ai-panel p  { font-size: 13.5px; color: var(--text-muted); }
+
+    /* Export format cards */
+    .export-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 20px 0; }
+    .export-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 18px; text-align: center;
+    }
+    .export-card .ec-fmt {
+      font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+      color: var(--accent); margin-bottom: 6px;
+    }
+    .export-card p { font-size: 12px; margin: 0; }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      #content { padding: 48px 40px 100px; }
+    }
+    @media (max-width: 820px) {
+      #sidebar { display: none; }
+      #content { padding: 40px 24px 80px; }
+      .feature-list, .two-col, .export-cards { grid-template-columns: 1fr; }
+      .hero-feature-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Scroll fade-in */
+    .reveal {
+      opacity: 0; transform: translateY(18px);
+      transition: opacity .5s ease, transform .5s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* Active nav highlight script */
+  </style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══════════════════════════════════════════════════════════ -->
+<header id="topbar">
+  <a href="#hero" class="logo">
+    <img src="src/renderer/assets/icon.png" alt="OpossumProse icon" />
+    <span class="logo-text">Opossum<span>Prose</span></span>
+  </a>
+  <span class="badge">v0.1.1</span>
+  <nav>
+    <a href="#overview">Overview</a>
+    <a href="#screenwriting">Screenwriting</a>
+    <a href="#novel">Novel</a>
+    <a href="#theatre">Theatre</a>
+    <a href="#ai">AI Features</a>
+  </nav>
+</header>
+
+<!-- ══ HERO ═════════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <img src="src/renderer/assets/icon.png" alt="OpossumProse" class="hero-icon" />
+  <h1>Your story,<br/><em>beautifully written.</em></h1>
+  <p class="tagline">
+    OpossumProse is a native desktop writing app for screenwriters, novelists, and playwrights — with AI right in the margin.
+  </p>
+  <div class="hero-pills">
+    <span class="hero-pill screen">🎬 Screenwriting</span>
+    <span class="hero-pill novel">📖 Novel Writing</span>
+    <span class="hero-pill stage">🎭 Theatre &amp; Stage</span>
+    <span class="hero-pill">🤖 Gemini AI</span>
+    <span class="hero-pill">📄 PDF · DOCX · Fountain</span>
+  </div>
+  <a href="#overview" class="hero-cta">Read the Docs ↓</a>
+
+  <div class="hero-feature-grid">
+    <div class="hero-card">
+      <div class="hc-icon purple">✍️</div>
+      <h3>Format-smart editors</h3>
+      <p>Industry-standard layouts enforced automatically — Courier, margins, element cycling.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hc-icon orange">🤖</div>
+      <h3>AI co-writer</h3>
+      <p>Describe a scene or chapter beat; Gemini writes it and streams it into your script.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hc-icon blue">🧠</div>
+      <h3>Continuity checker</h3>
+      <p>Scan for character name inconsistencies, timeline gaps, and location naming issues.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hc-icon green">🗂️</div>
+      <h3>Character directory</h3>
+      <p>Role, age, appearance, personality, backstory — all searchable and auto-saved.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hc-icon pink">📋</div>
+      <h3>Outline &amp; notes</h3>
+      <p>Three-depth outliner with status tracking and a categorised notes workspace.</p>
+    </div>
+    <div class="hero-card">
+      <div class="hc-icon yellow">📤</div>
+      <h3>Production-ready export</h3>
+      <p>PDF with title page, scene numbers, page numbers, and WGA revision colors.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ DOCS LAYOUT ═══════════════════════════════════════════════════════ -->
+<div id="docs-layout">
+
+  <!-- LEFT NAV -->
+  <nav id="sidebar">
+    <div class="nav-section">
+      <div class="nav-section-label">Introduction</div>
+      <a href="#overview"    class="nav-link active"><span class="nav-icon">🏠</span>Overview</a>
+      <a href="#getting-started" class="nav-link"><span class="nav-icon">🚀</span>Getting Started</a>
+      <a href="#dashboard"   class="nav-link"><span class="nav-icon">📁</span>Dashboard &amp; Projects</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Writing Modes</div>
+      <a href="#screenwriting" class="nav-link"><span class="nav-icon">🎬</span>Screenwriting</a>
+      <a href="#novel"         class="nav-link"><span class="nav-icon">📖</span>Novel Writing</a>
+      <a href="#theatre"       class="nav-link"><span class="nav-icon">🎭</span>Theatre &amp; Stage Play</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Project Tools</div>
+      <a href="#characters" class="nav-link"><span class="nav-icon">🧑‍🤝‍🧑</span>Character Directory</a>
+      <a href="#outline"    class="nav-link"><span class="nav-icon">📋</span>Outline Panel</a>
+      <a href="#notes"      class="nav-link"><span class="nav-icon">📝</span>Notes</a>
+      <a href="#find"       class="nav-link"><span class="nav-icon">🔍</span>Find &amp; Replace</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">AI Features</div>
+      <a href="#ai"          class="nav-link"><span class="nav-icon">🤖</span>AI Overview</a>
+      <a href="#ai-writer"   class="nav-link"><span class="nav-icon">✨</span>AI Writer</a>
+      <a href="#ai-chat"     class="nav-link"><span class="nav-icon">💬</span>AI Chat</a>
+      <a href="#continuity"  class="nav-link"><span class="nav-icon">🔗</span>Continuity Checker</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">Export</div>
+      <a href="#export"      class="nav-link"><span class="nav-icon">📤</span>Export Options</a>
+      <a href="#export-screenplay" class="nav-link"><span class="nav-icon">🎬</span>Scripts</a>
+      <a href="#export-novel"      class="nav-link"><span class="nav-icon">📖</span>Novels</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="content">
+
+    <!-- ── OVERVIEW ──────────────────────────────────────── -->
+    <section id="overview" class="doc-section reveal">
+      <div class="section-eyebrow">Introduction</div>
+      <h2 class="section-title">What is OpossumProse?</h2>
+      <p class="lead">
+        OpossumProse is a native macOS desktop application for long-form writing. It supports three distinct project types — Screenplays, Novels, and Stage Plays — each with a format-specific editor, a shared suite of creative tools, and an AI co-writer powered by Google Gemini.
+      </p>
+      <p>
+        Projects are stored locally on disk. Everything auto-saves. There are no word processors, no cloud sync requirements, and no subscription tiers — just a clean environment for writing.
+      </p>
+
+      <div class="two-col" style="margin-top:28px">
+        <div class="info-card">
+          <h4>Three project types</h4>
+          <ul>
+            <li>Screenplay (film &amp; TV)</li>
+            <li>Novel (chapters + manuscript view)</li>
+            <li>Stage Play (theatre / live performance)</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <h4>Available on</h4>
+          <ul>
+            <li>macOS (Apple Silicon &amp; Intel)</li>
+            <li>Distributed as a <code>.dmg</code> installer</li>
+            <li>Built with Electron + React</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <strong>Powered by Gemini</strong>
+        AI features require a Google Gemini API key. Keys are stored locally and never leave your machine. See <a href="#ai" style="color:inherit;text-decoration:underline">AI Features</a> for setup details.
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── GETTING STARTED ───────────────────────────────── -->
+    <section id="getting-started" class="doc-section reveal">
+      <div class="section-eyebrow">Setup</div>
+      <h2 class="section-title">Getting Started</h2>
+      <p class="lead">Download, install, and write your first scene in under two minutes.</p>
+
+      <h3 class="subsection-title">Installation</h3>
+      <ol class="steps">
+        <li>Download the latest <code>.dmg</code> from the Releases page.</li>
+        <li>Open the <code>.dmg</code> and drag <strong>OpossumProse.app</strong> into your Applications folder.</li>
+        <li>Launch the app. macOS may ask you to confirm opening an app from an unidentified developer — click <em>Open</em>.</li>
+        <li>You'll land on the Dashboard. Create your first project.</li>
+      </ol>
+
+      <h3 class="subsection-title">API Key Setup</h3>
+      <p>To use AI features you need a free Google Gemini API key.</p>
+      <ol class="steps">
+        <li>Visit <a href="https://aistudio.google.com/app/apikey" style="color:var(--accent-blue)">aistudio.google.com</a> and generate an API key.</li>
+        <li>In OpossumProse, open <strong>Settings</strong> and paste your key into the Gemini API Key field.</li>
+        <li>The key is stored locally in your app data — it is never uploaded anywhere.</li>
+      </ol>
+
+      <div class="callout tip">
+        <strong>Tip</strong>
+        The Gemini Flash model is used by default — it is fast and free-tier eligible. No billing required for casual use.
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── DASHBOARD ─────────────────────────────────────── -->
+    <section id="dashboard" class="doc-section reveal">
+      <div class="section-eyebrow">Navigation</div>
+      <h2 class="section-title">Dashboard &amp; Projects</h2>
+      <p class="lead">The Dashboard is the home screen of OpossumProse. From here you create new projects and open recent ones.</p>
+
+      <h3 class="subsection-title">Creating a project</h3>
+      <ol class="steps">
+        <li>Click <strong>New Project</strong> on the Dashboard.</li>
+        <li>Choose a project type: <em>Novel</em>, <em>Screenplay</em>, or <em>Stage Play</em>.</li>
+        <li>Enter a project name. A directory is created on disk at the chosen location.</li>
+        <li>The editor opens immediately and auto-saves from that point on.</li>
+      </ol>
+
+      <h3 class="subsection-title">Editor tabs</h3>
+      <p>Every project has four tabs across the top of the editor:</p>
+      <table class="el-table">
+        <thead><tr><th>Tab</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Write</td><td>The primary format-aware writing editor for your project type.</td></tr>
+          <tr><td>Characters</td><td>Character Directory — roles, descriptions, backstory.</td></tr>
+          <tr><td>Notes</td><td>Categorised freeform notes attached to the project.</td></tr>
+          <tr><td>Outline</td><td>Hierarchical outline with status tracking.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── SCREENWRITING ─────────────────────────────────── -->
+    <section id="screenwriting" class="doc-section reveal">
+      <div class="section-eyebrow blue">Writing Mode</div>
+      <h2 class="section-title">Screenwriting</h2>
+      <p class="lead">
+        The Screenplay editor enforces industry-standard formatting automatically — Courier New at 12pt, correct margins, and proper element positioning — so your output is submission-ready without configuration.
+      </p>
+
+      <h3 class="subsection-title blue">Script elements</h3>
+      <p>Every line in the editor has an <em>element type</em>. The element controls its formatting, indentation, and capitalization automatically.</p>
+
+      <table class="el-table">
+        <thead><tr><th>Element</th><th>Shortcut / Smart behavior</th><th>Formatting</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Scene Heading</td>
+            <td><kbd>Tab</kbd> cycles to Action</td>
+            <td>All caps · bold · left-aligned · example: <code>INT. KITCHEN - DAY</code></td>
+          </tr>
+          <tr>
+            <td>Action</td>
+            <td><kbd>Enter</kbd> creates another Action; <kbd>Tab</kbd> → Character</td>
+            <td>Normal case · left-aligned · full page width</td>
+          </tr>
+          <tr>
+            <td>Character</td>
+            <td><kbd>Enter</kbd> → Dialogue; <kbd>Tab</kbd> → Dialogue</td>
+            <td>All caps · centered at 2.2 in from left</td>
+          </tr>
+          <tr>
+            <td>Parenthetical</td>
+            <td><kbd>Tab</kbd> → Dialogue; <kbd>Enter</kbd> → Dialogue</td>
+            <td>Normal case · indented 1.6 in · 2 in wide</td>
+          </tr>
+          <tr>
+            <td>Dialogue</td>
+            <td><kbd>Enter</kbd> → Character; <kbd>Tab</kbd> → Character</td>
+            <td>Normal case · indented 1 in · right margin 1.5 in</td>
+          </tr>
+          <tr>
+            <td>Transition</td>
+            <td><kbd>Tab</kbd> → Scene Heading; <kbd>Enter</kbd> → Scene Heading</td>
+            <td>All caps · right-aligned · example: <code>CUT TO:</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout info">
+        <strong>Tab cycling</strong>
+        Pressing <kbd>Tab</kbd> on an empty line cycles to the next logical element type. This is the fastest way to navigate the format without a mouse.
+      </div>
+
+      <h3 class="subsection-title blue">Character autocomplete</h3>
+      <p>
+        When typing on a <strong>Character</strong> line, OpossumProse shows an autocomplete dropdown of character names already in your script. Use arrow keys to navigate and <kbd>Enter</kbd> or <kbd>Tab</kbd> to accept.
+      </p>
+
+      <h3 class="subsection-title blue">Scene navigation</h3>
+      <p>The left sidebar lists every scene heading in order. Click any scene to jump directly to it. Scene headings are numbered automatically.</p>
+
+      <h3 class="subsection-title blue">Title page</h3>
+      <p>Every screenplay project has a dedicated Title Page view with editable fields:</p>
+      <ul class="feature-list">
+        <li class="blue"><span class="fl-icon">■</span>Title</li>
+        <li class="blue"><span class="fl-icon">■</span>Subtitle</li>
+        <li class="blue"><span class="fl-icon">■</span>Author name</li>
+        <li class="blue"><span class="fl-icon">■</span>Contact block (multi-line)</li>
+      </ul>
+      <p>The title page is included in PDF exports when the <em>Include title page</em> export setting is enabled (default: on).</p>
+
+      <h3 class="subsection-title blue">Revision colors</h3>
+      <p>OpossumProse follows the WGA standard revision color sequence. Each project can be assigned a revision color that tints the page background and optionally appears as a watermark in exports.</p>
+
+      <div class="color-chips">
+        <span class="color-chip" style="background:#ffffff18;color:#ddd"><span class="swatch" style="background:#ffffff"></span>White · Original</span>
+        <span class="color-chip" style="background:#1e3a5f;color:#93c5fd"><span class="swatch" style="background:#dbeafe"></span>Blue · 1st</span>
+        <span class="color-chip" style="background:#4a1942;color:#f9a8d4"><span class="swatch" style="background:#fce7f3"></span>Pink · 2nd</span>
+        <span class="color-chip" style="background:#3d3a00;color:#fde047"><span class="swatch" style="background:#fef9c3"></span>Yellow · 3rd</span>
+        <span class="color-chip" style="background:#14431f;color:#86efac"><span class="swatch" style="background:#dcfce7"></span>Green · 4th</span>
+        <span class="color-chip" style="background:#3d2e00;color:#fcd34d"><span class="swatch" style="background:#fef3c7"></span>Goldenrod · 5th</span>
+        <span class="color-chip" style="background:#3d2e00;color:#fed7aa"><span class="swatch" style="background:#fef2d7"></span>Buff · 6th</span>
+        <span class="color-chip" style="background:#4a1a1a;color:#fca5a5"><span class="swatch" style="background:#fee2e2"></span>Salmon · 7th</span>
+        <span class="color-chip" style="background:#4a1942;color:#f9a8d4"><span class="swatch" style="background:#fce7f3"></span>Cherry · 8th</span>
+        <span class="color-chip" style="background:#2e2818;color:#e5d5b0"><span class="swatch" style="background:#f5f0e8"></span>Tan · 9th</span>
+        <span class="color-chip" style="background:#2e2e00;color:#fef08a"><span class="swatch" style="background:#fefce8"></span>Ivory · 10th</span>
+      </div>
+
+      <h3 class="subsection-title blue">Focus mode</h3>
+      <p>Click the <strong>Focus Mode</strong> button in the toolbar to hide the scene sidebar and let the writing area fill the full width of the editor. Press the same button to exit.</p>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── NOVEL ─────────────────────────────────────────── -->
+    <section id="novel" class="doc-section reveal">
+      <div class="section-eyebrow warm">Writing Mode</div>
+      <h2 class="section-title">Novel Writing</h2>
+      <p class="lead">
+        The Novel editor organizes your manuscript into chapters. Each chapter is a titled block of prose. Chapters can be reordered, renamed, and navigated from a collapsible sidebar.
+      </p>
+
+      <h3 class="subsection-title warm">Chapters</h3>
+      <ul class="feature-list">
+        <li class="warm"><span class="fl-icon">→</span>Add chapters with the <strong>+ Add Chapter</strong> button in the sidebar.</li>
+        <li class="warm"><span class="fl-icon">→</span>Rename any chapter by editing its title inline in the sidebar or at the top of the editor.</li>
+        <li class="warm"><span class="fl-icon">→</span>Reorder chapters using the up/down arrows next to each chapter name.</li>
+        <li class="warm"><span class="fl-icon">→</span>Delete chapters with the trash icon (a confirmation is shown).</li>
+        <li class="warm"><span class="fl-icon">→</span>Word count is tracked per chapter and shown in the status bar.</li>
+        <li class="warm"><span class="fl-icon">→</span>Total word count across all chapters is displayed in the header.</li>
+      </ul>
+
+      <h3 class="subsection-title warm">Manuscript view</h3>
+      <p>
+        Toggle <strong>Manuscript view</strong> to display all chapters in a single scrollable document — useful for reading passes and continuity checks. Click <em>← Chapter view</em> to return to single-chapter editing.
+      </p>
+
+      <h3 class="subsection-title warm">Auto-save</h3>
+      <p>Changes are debounced and saved to disk automatically after 1.5 seconds of inactivity. A subtle indicator shows when a save is in progress. No manual save required.</p>
+
+      <h3 class="subsection-title warm">AI in the novel editor</h3>
+      <p>
+        The AI Writer panel (see <a href="#ai-writer" style="color:var(--accent-warm)">AI Writer</a>) works in <em>novel-chapter mode</em>. When generating, it passes the end of the previous chapter as context so the generated text flows naturally from what came before.
+      </p>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── THEATRE ────────────────────────────────────────── -->
+    <section id="theatre" class="doc-section reveal">
+      <div class="section-eyebrow green">Writing Mode</div>
+      <h2 class="section-title">Theatre &amp; Stage Play</h2>
+      <p class="lead">
+        The Stage Play editor shares the same element-based engine as the Screenplay editor, but with vocabulary and placeholders adapted for live theatre — acts instead of scenes, stage directions instead of action lines, and BLACKOUT instead of CUT TO.
+      </p>
+
+      <h3 class="subsection-title green">Stage play elements</h3>
+
+      <table class="el-table">
+        <thead><tr><th>Element</th><th>Theatre placeholder</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Scene Heading</td>
+            <td><code>ACT ONE</code></td>
+            <td>Used for act and scene headings; all caps.</td>
+          </tr>
+          <tr>
+            <td>Action</td>
+            <td><code>Stage direction...</code></td>
+            <td>Stage directions — lighting, movement, props, set notes.</td>
+          </tr>
+          <tr>
+            <td>Character</td>
+            <td><code>CHARACTER NAME</code></td>
+            <td>Same as screenplay — uppercase, centered.</td>
+          </tr>
+          <tr>
+            <td>Parenthetical</td>
+            <td><code>(quietly)</code></td>
+            <td>Delivery notes in parentheses below the character name.</td>
+          </tr>
+          <tr>
+            <td>Dialogue</td>
+            <td><code>Dialogue...</code></td>
+            <td>The character's spoken lines.</td>
+          </tr>
+          <tr>
+            <td>Transition</td>
+            <td><code>BLACKOUT.</code></td>
+            <td>Lighting or scene transitions — right-aligned, all caps.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout tip">
+        <strong>Same keyboard flow</strong>
+        Tab cycling, Enter smart-advance, and character autocomplete all work identically to the Screenplay editor.
+      </div>
+
+      <h3 class="subsection-title green">Title page &amp; export settings</h3>
+      <p>Stage play projects include the same title page editor as screenplays. The default export settings enable the title page and allow toggling scene numbers and revision watermarks. Export formats are identical: PDF, DOCX, and Fountain.</p>
+
+      <h3 class="subsection-title green">AI Writer in stage mode</h3>
+      <p>
+        The AI Writer supports a <em>screenplay-act</em> mode which is used for stage plays. Prompts describe the major beats, character arcs, and central conflict of an act, and the AI generates a fully-formatted script segment with stage directions and dialogue.
+      </p>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── CHARACTERS ─────────────────────────────────────── -->
+    <section id="characters" class="doc-section reveal">
+      <div class="section-eyebrow">Project Tools</div>
+      <h2 class="section-title">Character Directory</h2>
+      <p class="lead">
+        Every project includes a Character Directory — a structured reference sheet for every person in your story. Characters are stored per-project and auto-saved.
+      </p>
+
+      <h3 class="subsection-title">Fields</h3>
+      <table class="el-table">
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Name</td><td>The character's full name as it appears in the script.</td></tr>
+          <tr><td>Role</td><td>Narrative function: Protagonist, Antagonist, Supporting, Minor, or Narrator.</td></tr>
+          <tr><td>Age</td><td>Freeform age or range (e.g., "30s").</td></tr>
+          <tr><td>Appearance</td><td>Physical description — height, build, distinguishing features.</td></tr>
+          <tr><td>Personality</td><td>Traits, quirks, motivations.</td></tr>
+          <tr><td>Backstory</td><td>History that informs the character's actions in the story.</td></tr>
+          <tr><td>Notes</td><td>Catch-all for casting ideas, arc notes, research.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="subsection-title">Managing characters</h3>
+      <ul class="feature-list">
+        <li><span class="fl-icon">+</span>Click the <strong>+</strong> button in the sidebar header to add a character.</li>
+        <li><span class="fl-icon">×</span>Select a character and click the delete icon to remove it.</li>
+        <li><span class="fl-icon">✓</span>All fields are edited inline — changes are auto-saved.</li>
+        <li><span class="fl-icon">↕</span>Characters are listed in creation order in the left panel.</li>
+      </ul>
+
+      <div class="callout info">
+        <strong>Autocomplete integration</strong>
+        Character names entered in the Directory are available as autocomplete suggestions in the Screenplay and Stage Play editors when you type a Character element.
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── OUTLINE ────────────────────────────────────────── -->
+    <section id="outline" class="doc-section reveal">
+      <div class="section-eyebrow">Project Tools</div>
+      <h2 class="section-title">Outline Panel</h2>
+      <p class="lead">
+        The Outline panel is a lightweight hierarchical planner attached to every project. Use it to map out acts, chapters, sequences, and individual scene beats before — or while — you write.
+      </p>
+
+      <h3 class="subsection-title">Structure levels</h3>
+      <table class="el-table">
+        <thead><tr><th>Level</th><th>Label (screenplay)</th><th>Label (novel)</th></tr></thead>
+        <tbody>
+          <tr><td>Depth 0</td><td>Act</td><td>Part</td></tr>
+          <tr><td>Depth 1</td><td>Sequence</td><td>Chapter</td></tr>
+          <tr><td>Depth 2</td><td>Scene / Beat</td><td>Scene / Beat</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="subsection-title">Status tracking</h3>
+      <p>Each outline item has a status badge:</p>
+      <div class="cat-chips">
+        <span class="cat-chip" style="background:#2a2a2a;color:#888">Todo</span>
+        <span class="cat-chip" style="background:#3d3000;color:#fbbf24">Draft</span>
+        <span class="cat-chip" style="background:#0a2e12;color:#4ade80">Done</span>
+      </div>
+      <p>Each item also has a <em>summary</em> field — a one-liner description of what happens at that level.</p>
+
+      <h3 class="subsection-title">Adding items</h3>
+      <ol class="steps">
+        <li>Click <strong>+ Add Item</strong> to append a new outline node at any level.</li>
+        <li>Set the depth (Act/Part, Chapter/Sequence, or Scene/Beat).</li>
+        <li>Type a title and an optional summary.</li>
+        <li>Set its status. Changes are auto-saved.</li>
+      </ol>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── NOTES ──────────────────────────────────────────── -->
+    <section id="notes" class="doc-section reveal">
+      <div class="section-eyebrow">Project Tools</div>
+      <h2 class="section-title">Notes</h2>
+      <p class="lead">
+        The Notes panel is a free-form scratchpad attached to your project. Notes are organized by category and auto-saved.
+      </p>
+
+      <h3 class="subsection-title">Categories</h3>
+      <div class="cat-chips">
+        <span class="cat-chip">General</span>
+        <span class="cat-chip">World-building</span>
+        <span class="cat-chip">Plot</span>
+        <span class="cat-chip">Research</span>
+        <span class="cat-chip">Dialogue</span>
+        <span class="cat-chip">Other</span>
+      </div>
+
+      <h3 class="subsection-title">Usage</h3>
+      <ul class="feature-list">
+        <li><span class="fl-icon">+</span>Add a note with the <strong>+</strong> button; it appears in the sidebar list.</li>
+        <li><span class="fl-icon">🏷</span>Assign a category from the dropdown to keep things organized.</li>
+        <li><span class="fl-icon">🔽</span>Filter the sidebar by category using the filter dropdown.</li>
+        <li><span class="fl-icon">✏️</span>Click any note to select and edit its title and content.</li>
+        <li><span class="fl-icon">💾</span>All changes are debounced and saved automatically.</li>
+      </ul>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── FIND & REPLACE ─────────────────────────────────── -->
+    <section id="find" class="doc-section reveal">
+      <div class="section-eyebrow">Project Tools</div>
+      <h2 class="section-title">Find &amp; Replace</h2>
+      <p class="lead">Quickly locate and replace text anywhere in the active editor with keyboard-navigable match highlighting.</p>
+
+      <table class="el-table">
+        <thead><tr><th>Action</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td>Open Find &amp; Replace</td><td>Click the search icon in the toolbar or use your system shortcut.</td></tr>
+          <tr><td>Find</td><td>Type in the Find field. Matches highlight immediately across all lines.</td></tr>
+          <tr><td>Navigate matches</td><td>Use the ↑ / ↓ buttons or <kbd>Enter</kbd> / <kbd>Shift Enter</kbd> to step through occurrences. Match counter shows <em>X of Y</em>.</td></tr>
+          <tr><td>Case sensitivity</td><td>Toggle the <strong>Aa</strong> button — case-insensitive by default.</td></tr>
+          <tr><td>Replace one</td><td>Type replacement text and click <strong>Replace</strong> to replace the current match.</td></tr>
+          <tr><td>Replace all</td><td>Click <strong>Replace All</strong> to replace every occurrence at once.</td></tr>
+          <tr><td>Close</td><td><kbd>Escape</kbd> or click ✕ — highlights clear automatically.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── AI OVERVIEW ────────────────────────────────────── -->
+    <section id="ai" class="doc-section reveal">
+      <div class="section-eyebrow">AI Features</div>
+      <h2 class="section-title">AI Overview</h2>
+      <p class="lead">
+        OpossumProse integrates Google Gemini to provide three distinct AI capabilities: an inline generator that writes formatted content from a prompt, a conversational chat assistant, and an automated continuity scanner.
+      </p>
+
+      <div class="two-col">
+        <div class="ai-panel">
+          <h4>AI Writer</h4>
+          <p>Describe a scene, act, or chapter beat. The AI generates a fully-formatted draft and streams it into a preview panel. Insert it at your cursor or discard and try again.</p>
+        </div>
+        <div class="ai-panel">
+          <h4>AI Chat</h4>
+          <p>A multi-turn conversation assistant that has access to your script as context. Ask it to develop a character arc, punch up dialogue, or brainstorm alternatives.</p>
+        </div>
+      </div>
+      <div class="ai-panel">
+        <h4>Continuity Checker</h4>
+        <p>Sends your script to Gemini for a full read-through. Returns tagged findings organized by category: character name inconsistencies, timeline anomalies, location naming issues, and more.</p>
+      </div>
+
+      <div class="callout warn">
+        <strong>API key required</strong>
+        All AI features require a Gemini API key configured in Settings. Responses stream in real-time — a stable internet connection is required.
+      </div>
+    </section>
+
+    <!-- ── AI WRITER ─────────────────────────────────────── -->
+    <section id="ai-writer" class="doc-section reveal">
+      <div class="section-eyebrow">AI Features</div>
+      <h2 class="section-title">AI Writer</h2>
+      <p class="lead">
+        AI Writer generates formatted script or prose content from a natural-language prompt. It is context-aware — by default it includes the surrounding text so the generated content flows from what you've already written.
+      </p>
+
+      <h3 class="subsection-title">Modes</h3>
+      <table class="el-table">
+        <thead><tr><th>Mode</th><th>Triggered from</th><th>Prompt guidance</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Write Scene with AI</td>
+            <td>Screenplay &amp; Stage Play editor</td>
+            <td>Where are we, who's there, what happens, what's the tension or turn…</td>
+          </tr>
+          <tr>
+            <td>Write Act with AI</td>
+            <td>Screenplay &amp; Stage Play editor</td>
+            <td>Major beats, character arcs, how it opens and closes, central conflict…</td>
+          </tr>
+          <tr>
+            <td>Write Chapter with AI</td>
+            <td>Novel editor</td>
+            <td>Setting, conflict, what changes for the characters…</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="subsection-title">How it works</h3>
+      <ol class="steps">
+        <li>Click the <strong>Write with AI</strong> button (wand icon) in the editor toolbar.</li>
+        <li>Type your prompt describing what should happen.</li>
+        <li>Optionally toggle <em>Use surrounding context</em> off if you want a standalone piece.</li>
+        <li>Click <strong>Generate</strong>. The response streams into the preview pane.</li>
+        <li>Review the result. Click <strong>Insert</strong> to place it at your cursor, or <strong>Regenerate</strong> to try a new take.</li>
+      </ol>
+
+      <div class="callout tip">
+        <strong>Context toggle</strong>
+        When context is on, the AI sees the last ~1500 characters of the previous chapter/scene and your current position. This dramatically improves voice and continuity consistency.
+      </div>
+    </section>
+
+    <!-- ── AI CHAT ────────────────────────────────────────── -->
+    <section id="ai-chat" class="doc-section reveal">
+      <div class="section-eyebrow">AI Features</div>
+      <h2 class="section-title">AI Chat</h2>
+      <p class="lead">
+        AI Chat is a persistent side panel conversation with Gemini. On first message it sends your current script as context, giving the AI a full picture of your project before any questions are asked.
+      </p>
+
+      <h3 class="subsection-title">Usage</h3>
+      <ol class="steps">
+        <li>Click the <strong>Chat</strong> icon in the toolbar to open the side panel.</li>
+        <li>Type your question or instruction. Press <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line.</li>
+        <li>The response streams in character by character.</li>
+        <li>Continue the conversation — the AI remembers everything said in the session.</li>
+        <li>Close the panel to end the session. History is not persisted between sessions.</li>
+      </ol>
+
+      <h3 class="subsection-title">Things to ask</h3>
+      <ul class="feature-list">
+        <li><span class="fl-icon">💡</span>"What are some alternative endings for the second act?"</li>
+        <li><span class="fl-icon">💡</span>"The dialogue in scene 14 feels stilted. How would you punch it up?"</li>
+        <li><span class="fl-icon">💡</span>"What's the emotional arc of JAMES across the script?"</li>
+        <li><span class="fl-icon">💡</span>"Suggest three ways to raise the stakes in the third act."</li>
+        <li><span class="fl-icon">💡</span>"Does this character's motivation feel consistent?"</li>
+        <li><span class="fl-icon">💡</span>"Write a brief synopsis of the story so far."</li>
+      </ul>
+    </section>
+
+    <!-- ── CONTINUITY CHECKER ─────────────────────────────── -->
+    <section id="continuity" class="doc-section reveal">
+      <div class="section-eyebrow">AI Features</div>
+      <h2 class="section-title">Continuity Checker</h2>
+      <p class="lead">
+        The Continuity Checker sends your entire script to Gemini and asks it to identify inconsistencies — the kind that slip through manual proofreading. Results are returned as tagged, categorized findings.
+      </p>
+
+      <h3 class="subsection-title">What it scans for</h3>
+      <ul class="feature-list">
+        <li><span class="fl-icon">⚠</span>Character name inconsistencies ("JOHN" vs "JONATHAN")</li>
+        <li><span class="fl-icon">⚠</span>Timeline jumps and anachronistic details</li>
+        <li><span class="fl-icon">⚠</span>Location naming inconsistencies</li>
+        <li><span class="fl-icon">⚠</span>Props or details referenced before they're introduced</li>
+        <li><span class="fl-icon">⚠</span>Character knowledge inconsistencies</li>
+        <li><span class="fl-icon">⚠</span>Wardrobe or appearance continuity issues</li>
+      </ul>
+
+      <h3 class="subsection-title">How to run it</h3>
+      <ol class="steps">
+        <li>Open the <strong>Tools</strong> menu or click the shield icon in the toolbar.</li>
+        <li>Click <strong>AI Continuity Check</strong>.</li>
+        <li>The checker sends your full script and waits for a response (may take several seconds for long scripts).</li>
+        <li>Findings are displayed as a list with category badges. Click a finding to jump to the relevant passage.</li>
+      </ol>
+
+      <div class="callout info">
+        <strong>Long scripts</strong>
+        Gemini's context window can handle feature-length screenplays comfortably. For very long novels, the checker may sample sections rather than read every word.
+      </div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── EXPORT OVERVIEW ────────────────────────────────── -->
+    <section id="export" class="doc-section reveal">
+      <div class="section-eyebrow">Export</div>
+      <h2 class="section-title">Export Options</h2>
+      <p class="lead">
+        OpossumProse exports to industry-standard formats. Access the export menu from the toolbar (arrow-up icon) or via the project menu.
+      </p>
+
+      <h3 class="subsection-title">Export settings panel</h3>
+      <p>Before exporting you can configure per-project export settings. These settings are saved with the project and persist between sessions.</p>
+
+      <table class="el-table">
+        <thead><tr><th>Setting</th><th>Applies to</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>Page numbers</td><td>All</td><td>Adds page numbers to exported PDF.</td></tr>
+          <tr><td>Scene numbers</td><td>Screenplay, Stage Play</td><td>Prefixes each scene heading with a number.</td></tr>
+          <tr><td>Include title page</td><td>Screenplay, Stage Play</td><td>Prepends the title page to the PDF.</td></tr>
+          <tr><td>Revision watermark</td><td>Screenplay, Stage Play</td><td>Prints the revision color name (e.g., "BLUE REVISION") as a watermark.</td></tr>
+          <tr><td>Table of contents</td><td>Novel</td><td>Adds a TOC page with chapter list and page numbers to the PDF.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── EXPORT SCREENPLAYS ─────────────────────────────── -->
+    <section id="export-screenplay" class="doc-section reveal">
+      <div class="section-eyebrow blue">Export</div>
+      <h2 class="section-title">Exporting Scripts</h2>
+      <p class="lead">Screenplays and Stage Plays can be exported in three formats, each suited to a different use case.</p>
+
+      <div class="export-cards">
+        <div class="export-card">
+          <div class="ec-fmt">.pdf</div>
+          <p style="color:var(--text-muted)">Print-ready, page-formatted output. Includes optional title page, scene numbers, page numbers, and revision watermark.</p>
+        </div>
+        <div class="export-card">
+          <div class="ec-fmt">.docx</div>
+          <p style="color:var(--text-muted)">Microsoft Word format. Each script element maps to a correctly-styled Word paragraph with proper indentation and capitalization.</p>
+        </div>
+        <div class="export-card">
+          <div class="ec-fmt">.fountain</div>
+          <p style="color:var(--text-muted)">Open screenplay markup format. Compatible with Highland 2, Fade In, Final Draft (via import), and other tools in the Fountain ecosystem.</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <strong>Fountain format</strong>
+        The <code>.fountain</code> export uses the open standard at fountain.io — plain text with simple markup that most professional screenplay tools can import. It is ideal for moving a draft into another application.
+      </div>
+    </section>
+
+    <!-- ── EXPORT NOVELS ──────────────────────────────────── -->
+    <section id="export-novel" class="doc-section reveal">
+      <div class="section-eyebrow warm">Export</div>
+      <h2 class="section-title">Exporting Novels</h2>
+      <p class="lead">Novels export in three formats. All formats include every chapter in order.</p>
+
+      <div class="export-cards">
+        <div class="export-card">
+          <div class="ec-fmt" style="color:var(--accent-warm)">.pdf</div>
+          <p style="color:var(--text-muted)">Manuscript-formatted PDF. Optional table of contents with page numbers. Chapter headings are styled and numbered.</p>
+        </div>
+        <div class="export-card">
+          <div class="ec-fmt" style="color:var(--accent-warm)">.docx</div>
+          <p style="color:var(--text-muted)">Word-compatible manuscript. Chapters are styled as Heading 1 sections with body text in a readable 12pt font.</p>
+        </div>
+        <div class="export-card">
+          <div class="ec-fmt" style="color:var(--accent-warm)">.txt</div>
+          <p style="color:var(--text-muted)">Plain text export. Chapter titles are separated by double line breaks. Clean and portable — useful for pasting into other tools.</p>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <strong>Table of contents</strong>
+        Enable <em>Table of contents</em> in export settings before exporting to PDF. The TOC lists every chapter with the page it starts on and appears at the front of the document.
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ── Scroll spy: highlight active nav link ────────────────────
+  const links = document.querySelectorAll('#sidebar .nav-link');
+  const sections = Array.from(document.querySelectorAll('.doc-section'));
+
+  function onScroll() {
+    const scrollY = window.scrollY + 100;
+    let active = sections[0];
+    for (const s of sections) {
+      if (s.offsetTop <= scrollY) active = s;
+    }
+    links.forEach(l => {
+      const href = l.getAttribute('href').slice(1);
+      l.classList.toggle('active', href === active.id);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // ── Reveal on scroll ────────────────────────────────────────
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.06 });
+  reveals.forEach(r => observer.observe(r));
+</script>
+
+</body>
+</html>
