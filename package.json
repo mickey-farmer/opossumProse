@@ -1,6 +1,6 @@
 {
   "name": "opossum-prose",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "OpossumProse — a writer companion app for novels and scripts",
   "private": true,
   "main": "out/main/index.js",
