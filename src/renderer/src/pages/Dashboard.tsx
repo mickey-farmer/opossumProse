@@ -17,6 +17,21 @@ const PROJECT_TYPE_META: Record<ProjectType, { label: string; icon: string; desc
     label: 'Stage Play',
     icon: '🎭',
     desc: 'Theater scripts with act/scene headings and stage direction formatting'
+  },
+  tv: {
+    label: 'TV / Episodic',
+    icon: '📺',
+    desc: 'Episode scripts with act breaks, cold open, teaser, tag & series title page'
+  },
+  shortstory: {
+    label: 'Short Story',
+    icon: '✍️',
+    desc: 'Single-canvas prose — no chapters, just your story from first word to last'
+  },
+  videogame: {
+    label: 'Video Game',
+    icon: '🎮',
+    desc: 'Branching dialogue trees, bark sheets, variables & conversation graphs'
   }
 }
 
@@ -81,8 +96,8 @@ export default function Dashboard(): JSX.Element {
 
   function handleTypeNext(): void {
     if (!newName.trim()) return
-    // novels skip the title page step
-    if (newType === 'novel') {
+    // novels and short stories skip the title page step
+    if (newType === 'novel' || newType === 'shortstory' || newType === 'videogame') {
       handleCreate()
     } else {
       setTitlePage((prev) => ({ ...prev, title: newName.trim() }))
@@ -115,7 +130,8 @@ export default function Dashboard(): JSX.Element {
     setActiveView('editor')
   }
 
-  const isScript = newType === 'screenplay' || newType === 'stageplay'
+  const isScript = newType === 'screenplay' || newType === 'stageplay' || newType === 'tv'
+  const isGame = newType === 'videogame'
 
   if (firstRun) {
     return (
@@ -204,7 +220,7 @@ export default function Dashboard(): JSX.Element {
 
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Project Type</label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-2.5">
                     {(Object.keys(PROJECT_TYPE_META) as ProjectType[]).map((type) => {
                       const meta = PROJECT_TYPE_META[type]
                       return (
@@ -363,7 +379,7 @@ function EmptyState({ onNew }: { onNew: () => void }): JSX.Element {
 }
 
 function ProjectGrid({ projects, onOpen }: { projects: Project[]; onOpen: (p: Project) => void }): JSX.Element {
-  const icons: Record<ProjectType, string> = { novel: '📖', screenplay: '🎬', stageplay: '🎭' }
+  const icons: Record<ProjectType, string> = { novel: '📖', screenplay: '🎬', stageplay: '🎭', tv: '📺', shortstory: '✍️', videogame: '🎮' }
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-800 mb-4">Your Projects</h2>
@@ -376,7 +392,7 @@ function ProjectGrid({ projects, onOpen }: { projects: Project[]; onOpen: (p: Pr
           >
             <div className="text-3xl mb-2">{icons[p.type]}</div>
             <div className="font-medium text-gray-900">{p.name}</div>
-            <div className="text-sm text-gray-500 capitalize">{p.type}</div>
+            <div className="text-sm text-gray-500">{PROJECT_TYPE_META[p.type]?.label ?? p.type}</div>
             {p.wordCount > 0 && (
               <div className="text-xs text-gray-400 mt-1">{p.wordCount.toLocaleString()} words</div>
             )}

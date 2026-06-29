@@ -462,6 +462,29 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
     })
   })
 
+  // ── Writing stats ─────────────────────────────────────────────────
+  ipcMain.handle('record-writing-stat', async (_event, projectPath: string, entry: unknown) => {
+    const statsPath = join(projectPath, 'stats.json')
+    let entries: unknown[] = []
+    try {
+      const raw = await fsp.readFile(statsPath, 'utf-8')
+      entries = JSON.parse(raw)
+    } catch { /* file doesn't exist yet */ }
+    entries.push(entry)
+    await fsp.writeFile(statsPath, JSON.stringify(entries, null, 2))
+    return true
+  })
+
+  ipcMain.handle('load-writing-stats', async (_event, projectPath: string) => {
+    const statsPath = join(projectPath, 'stats.json')
+    try {
+      const raw = await fsp.readFile(statsPath, 'utf-8')
+      return JSON.parse(raw)
+    } catch {
+      return []
+    }
+  })
+
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

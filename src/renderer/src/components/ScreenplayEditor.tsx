@@ -90,7 +90,7 @@ function getElementStyle(el: ScreenplayElement): React.CSSProperties {
   }
 }
 
-function getPlaceholder(el: ScreenplayElement, isStagePlay: boolean): string {
+function getPlaceholder(el: ScreenplayElement, isStagePlay: boolean, isTV: boolean): string {
   if (isStagePlay) {
     return ({
       'scene-heading': 'ACT ONE',
@@ -99,6 +99,16 @@ function getPlaceholder(el: ScreenplayElement, isStagePlay: boolean): string {
       parenthetical: '(quietly)',
       dialogue: 'Dialogue...',
       transition: 'BLACKOUT.'
+    } as Record<ScreenplayElement, string>)[el]
+  }
+  if (isTV) {
+    return ({
+      'scene-heading': 'INT. LOCATION - DAY',
+      action: 'Action description...',
+      character: 'CHARACTER NAME',
+      parenthetical: '(quietly)',
+      dialogue: 'Dialogue...',
+      transition: 'CUT TO:'
     } as Record<ScreenplayElement, string>)[el]
   }
   return ({
@@ -116,11 +126,13 @@ function getPlaceholder(el: ScreenplayElement, isStagePlay: boolean): string {
 function TitlePageView({
   titlePage,
   projectName,
-  bgHex
+  bgHex,
+  isTV
 }: {
   titlePage: TitlePage
   projectName: string
   bgHex: string
+  isTV?: boolean
 }): JSX.Element {
   const mono: React.CSSProperties = { fontFamily: 'Courier New, Courier, monospace', fontSize: '12pt' }
   return (
@@ -131,11 +143,24 @@ function TitlePageView({
     >
       {/* Centered title block — roughly 1/3 down */}
       <div className="absolute left-0 right-0" style={{ top: '3.5in', textAlign: 'center' }}>
+        {isTV && titlePage.seriesTitle && (
+          <div style={{ ...mono, fontSize: '11pt', color: '#555', marginBottom: '8px', textTransform: 'uppercase' }}>
+            {titlePage.seriesTitle}
+          </div>
+        )}
         <div style={{ ...mono, fontWeight: 'bold', textTransform: 'uppercase', fontSize: '14pt' }}>
-          {titlePage.title || projectName}
+          {isTV ? (titlePage.episodeTitle || titlePage.title || projectName) : (titlePage.title || projectName)}
         </div>
+        {isTV && titlePage.episodeNumber && (
+          <div style={{ ...mono, marginTop: '8px', color: '#555' }}>
+            Episode {titlePage.episodeNumber}
+          </div>
+        )}
         {titlePage.subtitle && (
           <div style={{ ...mono, marginTop: '24px' }}>{titlePage.subtitle}</div>
+        )}
+        {isTV && titlePage.draftDate && (
+          <div style={{ ...mono, marginTop: '8px', color: '#555', fontSize: '11pt' }}>{titlePage.draftDate}</div>
         )}
       </div>
 
@@ -159,17 +184,19 @@ function TitlePageView({
 function TitlePageEditor({
   titlePage,
   projectName,
-  onSave
+  onSave,
+  isTV
 }: {
   titlePage: TitlePage
   projectName: string
   onSave: (tp: TitlePage) => void
+  isTV?: boolean
 }): JSX.Element {
   const [draft, setDraft] = useState<TitlePage>(titlePage)
 
   function field(key: keyof TitlePage): object {
     return {
-      value: draft[key],
+      value: draft[key] ?? '',
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
         setDraft((p) => ({ ...p, [key]: e.target.value }))
     }
@@ -178,14 +205,52 @@ function TitlePageEditor({
   return (
     <div className="p-3 space-y-3">
       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Title Page</div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-0.5">Title</label>
-        <input
-          {...field('title')}
-          placeholder={projectName}
-          className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded outline-none focus:ring-1 focus:ring-gray-600"
-        />
-      </div>
+      {isTV && (
+        <>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Series title</label>
+            <input
+              {...field('seriesTitle')}
+              placeholder="My Great Show"
+              className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded outline-none focus:ring-1 focus:ring-gray-600"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Episode title</label>
+            <input
+              {...field('episodeTitle')}
+              placeholder="Pilot"
+              className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded outline-none focus:ring-1 focus:ring-gray-600"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Episode number</label>
+            <input
+              {...field('episodeNumber')}
+              placeholder="101"
+              className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded outline-none focus:ring-1 focus:ring-gray-600"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-0.5">Draft date</label>
+            <input
+              {...field('draftDate')}
+              placeholder="First Draft — January 2025"
+              className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded outline-none focus:ring-1 focus:ring-gray-600"
+            />
+          </div>
+        </>
+      )}
+      {!isTV && (
+        <div>
+          <label className="block text-xs text-gray-500 mb-0.5">Title</label>
+          <input
+            {...field('title')}
+            placeholder={projectName}
+            className="w-full bg-gray-800 text-white text-xs px-2 py-1.5 rounded outline-none focus:ring-1 focus:ring-gray-600"
+          />
+        </div>
+      )}
       <div>
         <label className="block text-xs text-gray-500 mb-0.5">Credit line</label>
         <input
@@ -227,6 +292,7 @@ interface LineEditorProps {
   element: ScreenplayElement
   isActive: boolean
   isStagePlay: boolean
+  isTV: boolean
   showContd: boolean
   sceneNumber?: number
   onFocus: (id: string, element: ScreenplayElement) => void
@@ -236,7 +302,7 @@ interface LineEditorProps {
 }
 
 const LineEditor = React.memo(
-  function LineEditor({ lineId, initialText, element, isActive, isStagePlay, showContd, sceneNumber, onFocus, onBlur, onKeyDown, onInput }: LineEditorProps) {
+  function LineEditor({ lineId, initialText, element, isActive, isStagePlay, isTV, showContd, sceneNumber, onFocus, onBlur, onKeyDown, onInput }: LineEditorProps) {
     const ref = useRef<HTMLDivElement>(null)
 
     useLayoutEffect(() => {
@@ -279,7 +345,7 @@ const LineEditor = React.memo(
             contentEditable
             suppressContentEditableWarning
             data-line-id={lineId}
-            data-placeholder={getPlaceholder(element, isStagePlay)}
+            data-placeholder={getPlaceholder(element, isStagePlay, isTV)}
             className={`outline-none min-h-[1.5em] rounded-sm transition-colors ${isActive ? 'bg-blue-50/50' : ''}`}
             onFocus={() => onFocus(lineId, element)}
             onBlur={(e) => onBlur(lineId, e.currentTarget.textContent || '')}
@@ -308,17 +374,64 @@ const LineEditor = React.memo(
 
 // ─── Navigator ─────────────────────────────────────────────────────────────────
 
-function Navigator({ lines, activeLine, onNavigate, isStagePlay }: {
+const TV_ACT_MARKERS = ['COLD OPEN', 'TEASER', 'ACT ONE', 'ACT TWO', 'ACT THREE', 'ACT FOUR', 'ACT FIVE', 'TAG', 'EPILOGUE', 'CODA']
+
+function isActMarker(text: string): boolean {
+  const up = text.trim().toUpperCase()
+  return TV_ACT_MARKERS.some((m) => up === m || up.startsWith(m + ' ') || up.startsWith('ACT '))
+}
+
+function Navigator({ lines, activeLine, onNavigate, isStagePlay, isTV }: {
   lines: LineData[]
   activeLine: string
   onNavigate: (id: string) => void
   isStagePlay: boolean
+  isTV: boolean
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const headings = lines.filter((l) => l.element === 'scene-heading' && l.text.trim())
 
   if (headings.length === 0) {
     return <div className="text-xs text-gray-600 italic px-1">No headings yet</div>
+  }
+
+  if (isTV) {
+    // Group scenes under act-level markers (COLD OPEN, ACT ONE, etc.)
+    const groups: { act: LineData; scenes: LineData[] }[] = []
+    for (const h of headings) {
+      if (isActMarker(h.text) || groups.length === 0) {
+        groups.push({ act: h, scenes: [] })
+      } else {
+        groups[groups.length - 1].scenes.push(h)
+      }
+    }
+    return (
+      <div className="space-y-0.5">
+        {groups.map((g) => {
+          const isCollapsed = collapsed[g.act.id]
+          return (
+            <div key={g.act.id}>
+              <div className="flex items-center">
+                <button onClick={() => setCollapsed((c) => ({ ...c, [g.act.id]: !isCollapsed }))} className="w-4 text-gray-600 hover:text-gray-300 text-xs shrink-0">
+                  {g.scenes.length > 0 ? (isCollapsed ? '▸' : '▾') : ' '}
+                </button>
+                <button
+                  onClick={() => onNavigate(g.act.id)}
+                  className={`flex-1 text-left text-xs px-1 py-1 rounded truncate transition-colors font-medium ${activeLine === g.act.id ? 'bg-gray-700 text-white' : 'text-gray-300 hover:text-gray-100 hover:bg-gray-800'}`}
+                >
+                  {g.act.text}
+                </button>
+              </div>
+              {!isCollapsed && g.scenes.map((s) => (
+                <button key={s.id} onClick={() => onNavigate(s.id)} className={`block w-full text-left text-xs pl-5 pr-2 py-0.5 rounded truncate transition-colors ${activeLine === s.id ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'}`}>
+                  {s.text}
+                </button>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+    )
   }
 
   if (isStagePlay) {
@@ -378,10 +491,11 @@ function Navigator({ lines, activeLine, onNavigate, isStagePlay }: {
 const ScreenplayEditor = forwardRef<ScreenplayEditorHandle, { project: Project; exportSettings: ExportSettings }>(
 function ScreenplayEditor({ project, exportSettings }, ref) {
   const isStagePlay = project.type === 'stageplay'
+  const isTV = project.type === 'tv'
   const { updateActiveProject } = useProjectStore()
 
   const [lines, setLines] = useState<LineData[]>([
-    { id: '1', element: 'scene-heading', text: isStagePlay ? 'ACT ONE' : 'INT. LOCATION - DAY' }
+    { id: '1', element: 'scene-heading', text: isStagePlay ? 'ACT ONE' : isTV ? 'COLD OPEN' : 'INT. LOCATION - DAY' }
   ])
   const [activeLine, setActiveLine] = useState('1')
   const [activeElement, setActiveElement] = useState<ScreenplayElement>('scene-heading')
@@ -404,7 +518,7 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const linesRef = useRef(lines)
   linesRef.current = lines
-  const liveTexts = useRef<Record<string, string>>({ '1': isStagePlay ? 'ACT ONE' : 'INT. LOCATION - DAY' })
+  const liveTexts = useRef<Record<string, string>>({ '1': isStagePlay ? 'ACT ONE' : isTV ? 'COLD OPEN' : 'INT. LOCATION - DAY' })
   const charNamesRef = useRef<string[]>([])
   charNamesRef.current = charNames
   const dropdownStateRef = useRef(dropdownState)
@@ -959,7 +1073,7 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
         {/* Navigator */}
         <div className="mt-4 border-t border-gray-700 pt-3">
           <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Navigator</div>
-          <Navigator lines={lines} activeLine={activeLine} onNavigate={navigateToLine} isStagePlay={isStagePlay} />
+          <Navigator lines={lines} activeLine={activeLine} onNavigate={navigateToLine} isStagePlay={isStagePlay} isTV={isTV} />
         </div>
 
         {/* Breakdown */}
@@ -990,7 +1104,7 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
           </button>
           {showTitleEditor && (
             <div className="mt-2 bg-gray-800 rounded-lg overflow-hidden">
-              <TitlePageEditor titlePage={titlePage} projectName={project.name} onSave={saveTitlePage} />
+              <TitlePageEditor titlePage={titlePage} projectName={project.name} onSave={saveTitlePage} isTV={isTV} />
             </div>
           )}
           {showTitlePage && (
@@ -1034,7 +1148,7 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
       {/* Page area */}
       <div className="flex-1 overflow-auto bg-gray-100 py-8 px-4 pb-8">
         {showTitlePage ? (
-          <TitlePageView titlePage={titlePage} projectName={project.name} bgHex={revisionColor.hex} />
+          <TitlePageView titlePage={titlePage} projectName={project.name} bgHex={revisionColor.hex} isTV={isTV} />
         ) : (
           <div
             id="screenplay-content"
@@ -1049,6 +1163,7 @@ function ScreenplayEditor({ project, exportSettings }, ref) {
                   element={line.element}
                   isActive={activeLine === line.id}
                   isStagePlay={isStagePlay}
+                  isTV={isTV}
                   showContd={contdLineIds.has(line.id)}
                   sceneNumber={exportSettings.showSceneNumbers && line.element === 'scene-heading' ? sceneNumbers[line.id] : undefined}
                   onFocus={handleFocus}

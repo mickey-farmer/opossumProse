@@ -43,4 +43,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('gemini-chat-chunk', handler)
     return () => ipcRenderer.removeListener('gemini-chat-chunk', handler)
   },
+  recordWritingStat: (projectPath: string, entry: unknown) =>
+    ipcRenderer.invoke('record-writing-stat', projectPath, entry),
+  loadWritingStats: (projectPath: string) =>
+    ipcRenderer.invoke('load-writing-stats', projectPath),
 })

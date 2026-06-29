@@ -3,9 +3,12 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, conv
 import { useProjectStore, EditorTab, ExportSettings, defaultExportSettings } from '../stores/projectStore'
 import ScreenplayEditor, { ScreenplayEditorHandle } from '../components/ScreenplayEditor'
 import NovelEditor, { NovelEditorHandle } from '../components/NovelEditor'
+import ShortStoryEditor, { ShortStoryEditorHandle } from '../components/ShortStoryEditor'
+import GameScriptEditor, { GameScriptEditorHandle } from '../components/GameScriptEditor'
 import CharacterDirectory from '../components/CharacterDirectory'
 import NotesPanel from '../components/NotesPanel'
 import OutlinePanel from '../components/OutlinePanel'
+import WritingStats from '../components/WritingStats'
 import FindReplace from '../components/FindReplace'
 import ContinuityChecker from '../components/ContinuityChecker'
 import AIChat from '../components/AIChat'
@@ -15,6 +18,7 @@ const TABS: { id: EditorTab; label: string }[] = [
   { id: 'characters', label: 'Characters' },
   { id: 'notes', label: 'Notes' },
   { id: 'outline', label: 'Outline' },
+  { id: 'stats', label: 'Stats' },
 ]
 
 interface SettingToggleProps {
@@ -45,6 +49,10 @@ export default function Editor(): JSX.Element {
 
   const screplayRef = useRef<ScreenplayEditorHandle>(null)
   const novelRef = useRef<NovelEditorHandle>(null)
+  const shortStoryRef = useRef<ShortStoryEditorHandle>(null)
+  const gameScriptRef = useRef<GameScriptEditorHandle>(null)
+  const sessionStartRef = useRef<number>(Date.now())
+  const prevWordCountRef = useRef<number>(0)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showFindReplace, setShowFindReplace] = useState(false)
@@ -71,7 +79,7 @@ export default function Editor(): JSX.Element {
       }
       if (e.metaKey && e.key === 's') {
         e.preventDefault()
-        screplayRef.current?.saveNow() ?? novelRef.current?.saveNow()
+        screplayRef.current?.saveNow() ?? novelRef.current?.saveNow() ?? shortStoryRef.current?.saveNow() ?? gameScriptRef.current?.saveNow()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -94,6 +102,29 @@ export default function Editor(): JSX.Element {
     window.api.updateProject(activeProject.path, { wordCountGoal: val })
   }
 
+  // Record a writing stat entry whenever wordCount changes meaningfully
+  useEffect(() => {
+    const current = activeProject.wordCount ?? 0
+    const prev = prevWordCountRef.current
+    if (prev === 0) {
+      prevWordCountRef.current = current
+      return
+    }
+    const delta = current - prev
+    if (Math.abs(delta) < 1) return
+    prevWordCountRef.current = current
+    const sessionMs = Date.now() - sessionStartRef.current
+    window.api.recordWritingStat(activeProject.path, {
+      date: new Date().toISOString().slice(0, 10),
+      projectId: activeProject.id,
+      projectName: activeProject.name,
+      projectType: activeProject.type,
+      wordsAdded: Math.max(delta, 0),
+      totalWords: current,
+      sessionMs,
+    })
+  }, [activeProject.wordCount]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function goBack(): void {
     setActiveProject(null)
     setActiveView('dashboard')
@@ -102,9 +133,14 @@ export default function Editor(): JSX.Element {
   const typeLabel =
     activeProject.type === 'novel' ? 'Novel'
     : activeProject.type === 'screenplay' ? 'Screenplay'
-    : 'Stage Play'
+    : activeProject.type === 'stageplay' ? 'Stage Play'
+    : activeProject.type === 'tv' ? 'TV / Episodic'
+    : activeProject.type === 'videogame' ? 'Video Game'
+    : 'Short Story'
 
-  const isScript = activeProject.type === 'screenplay' || activeProject.type === 'stageplay'
+  const isScript = activeProject.type === 'screenplay' || activeProject.type === 'stageplay' || activeProject.type === 'tv'
+  const isProseEditor = activeProject.type === 'novel' || activeProject.type === 'shortstory'
+  const isGame = activeProject.type === 'videogame'
 
   // ── Current word count for progress bar ──────────────────────────────────────
   // We read it from the store's wordCount (updated on save) as a lightweight proxy
@@ -166,6 +202,61 @@ export default function Editor(): JSX.Element {
 
     const base64 = await Packer.toBase64String(doc)
     await window.api.saveBuffer(activeProject.name, base64, 'docx')
+    setExporting(false)
+  }
+
+  // ── Short story exports ───────────────────────────────────────────────────────
+
+  async function handleShortStoryExportPdf(): Promise<void> {
+    if (!shortStoryRef.current) return
+    setExporting(true); setShowExportMenu(false)
+    const html = shortStoryRef.current.getPdfHtml(exportSettings)
+    await window.api.printToPdf(activeProject.name, html)
+    setExporting(false)
+  }
+
+  async function handleShortStoryExportText(): Promise<void> {
+    if (!shortStoryRef.current) return
+    setExporting(true); setShowExportMenu(false)
+    const content = shortStoryRef.current.getPlainText()
+    await window.api.exportText(activeProject.name, content, 'txt')
+    setExporting(false)
+  }
+
+  // ── Game script exports ───────────────────────────────────────────────────────
+
+  async function handleGameExportJson(): Promise<void> {
+    setExporting(true); setShowExportMenu(false)
+    const raw = await window.api.loadContent(activeProject.path) as { script?: unknown } | null
+    const json = JSON.stringify(raw?.script ?? {}, null, 2)
+    await window.api.exportText(activeProject.name, json, 'json')
+    setExporting(false)
+  }
+
+  async function handleGameExportCsv(): Promise<void> {
+    setExporting(true); setShowExportMenu(false)
+    const raw = await window.api.loadContent(activeProject.path) as { script?: { conversations?: { id: string; name: string; nodes?: { id: string; lines?: { speaker: string; text: string; condition?: string; voId?: string }[]; choices?: { text: string; destinationNodeId: string; condition?: string }[] }[] }[] } } | null
+    const script = raw?.script
+    const rows: string[] = ['NodeID,ConversationName,Speaker,LineText,Condition,VOId,ChoiceText,ChoiceDest,ChoiceCondition']
+    for (const conv of script?.conversations ?? []) {
+      for (const node of conv.nodes ?? []) {
+        for (const line of node.lines ?? []) {
+          rows.push([node.id, conv.name, line.speaker, line.text, line.condition ?? '', line.voId ?? '', '', '', ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        }
+        for (const choice of node.choices ?? []) {
+          rows.push([node.id, conv.name, 'PLAYER', '', '', '', choice.text, choice.destinationNodeId, choice.condition ?? ''].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        }
+      }
+    }
+    await window.api.exportText(activeProject.name + '_script', rows.join('\n'), 'csv')
+    setExporting(false)
+  }
+
+  async function handleGameExportText(): Promise<void> {
+    if (!gameScriptRef.current) return
+    setExporting(true); setShowExportMenu(false)
+    const text = gameScriptRef.current.exportPlainText()
+    await window.api.exportText(activeProject.name + '_script', text, 'txt')
     setExporting(false)
   }
 
@@ -233,9 +324,10 @@ export default function Editor(): JSX.Element {
 
   const getContinuityContent = useCallback((): string => {
     if (isScript && screplayRef.current) return screplayRef.current.getAllText()
-    if (!isScript && novelRef.current) return novelRef.current.getPlainText()
+    if (activeProject.type === 'novel' && novelRef.current) return novelRef.current.getPlainText()
+    if (activeProject.type === 'shortstory' && shortStoryRef.current) return shortStoryRef.current.getPlainText()
     return ''
-  }, [isScript])
+  }, [isScript, activeProject.type])
 
   // ── Settings panel ────────────────────────────────────────────────────────────
 
@@ -381,6 +473,17 @@ export default function Editor(): JSX.Element {
                       <button onClick={handleExportFountain} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100">Export Fountain (.fountain)</button>
                       <button onClick={handleExportScriptDocx} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors">Export Word (.docx)</button>
                     </>
+                  ) : activeProject.type === 'shortstory' ? (
+                    <>
+                      <button onClick={handleShortStoryExportPdf} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100">Export PDF</button>
+                      <button onClick={handleShortStoryExportText} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors">Export Plain Text (.txt)</button>
+                    </>
+                  ) : activeProject.type === 'videogame' ? (
+                    <>
+                      <button onClick={handleGameExportJson} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100">Export JSON (engine)</button>
+                      <button onClick={handleGameExportCsv} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100">Export CSV (VO / loc)</button>
+                      <button onClick={handleGameExportText} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors">Export Plain Text (readable)</button>
+                    </>
                   ) : (
                     <>
                       <button onClick={handleNovelExportPdf} className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors border-b border-gray-100">Export PDF</button>
@@ -438,24 +541,31 @@ export default function Editor(): JSX.Element {
       {/* Tab content + chat panel */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden">
-          {activeEditorTab === 'write' && (
-            <>
-              {isScript && <ScreenplayEditor ref={screplayRef} project={activeProject} exportSettings={exportSettings} />}
-              {activeProject.type === 'novel' && (
-                <NovelEditor ref={novelRef} project={activeProject} exportSettings={exportSettings} />
-              )}
-            </>
-          )}
+          {/* Write editors stay mounted to preserve in-memory state; hidden via display:none when on other tabs */}
+          <div style={{ display: activeEditorTab === 'write' ? 'contents' : 'none' }}>
+            {isScript && <ScreenplayEditor ref={screplayRef} project={activeProject} exportSettings={exportSettings} />}
+            {activeProject.type === 'novel' && (
+              <NovelEditor ref={novelRef} project={activeProject} exportSettings={exportSettings} />
+            )}
+            {activeProject.type === 'shortstory' && (
+              <ShortStoryEditor ref={shortStoryRef} project={activeProject} exportSettings={exportSettings} />
+            )}
+            {isGame && (
+              <GameScriptEditor ref={gameScriptRef} project={activeProject} />
+            )}
+          </div>
           {activeEditorTab === 'characters' && <CharacterDirectory project={activeProject} />}
           {activeEditorTab === 'notes' && <NotesPanel project={activeProject} />}
           {activeEditorTab === 'outline' && <OutlinePanel project={activeProject} />}
+          {activeEditorTab === 'stats' && <WritingStats project={activeProject} />}
         </div>
         {showChat && (
           <AIChat
             projectName={activeProject.name}
             getContext={() => {
               if (isScript && screplayRef.current) return screplayRef.current.getAllText()
-              if (!isScript && novelRef.current) return novelRef.current.getPlainText()
+              if (activeProject.type === 'novel' && novelRef.current) return novelRef.current.getPlainText()
+              if (activeProject.type === 'shortstory' && shortStoryRef.current) return shortStoryRef.current.getPlainText()
               return ''
             }}
             onClose={() => setShowChat(false)}

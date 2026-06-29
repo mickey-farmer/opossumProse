@@ -1,12 +1,79 @@
 import { create } from 'zustand'
 
-export type ProjectType = 'novel' | 'screenplay' | 'stageplay'
+export type ProjectType = 'novel' | 'screenplay' | 'stageplay' | 'tv' | 'shortstory' | 'videogame'
+
+// ── Video game script data model ──────────────────────────────────────────────
+
+export type GameNodeType = 'conversation' | 'cutscene' | 'bark_group' | 'start'
+
+export interface GameDialogueLine {
+  id: string
+  speaker: string
+  text: string
+  condition?: string   // e.g. "reputation > 50"
+  voId?: string        // auto-generated localization key
+}
+
+export interface GameChoice {
+  id: string
+  text: string           // player-visible response text
+  destinationNodeId: string
+  condition?: string     // gate this choice behind a flag/var
+}
+
+export interface GameNode {
+  id: string             // e.g. "NODE_001"
+  label: string          // friendly name for display in graph
+  type: GameNodeType
+  lines: GameDialogueLine[]
+  choices: GameChoice[]
+  actions: string[]      // e.g. ["SET quest_started = true", "GIVE item_key"]
+  notes?: string
+  // graph position (used in Phase 2)
+  x?: number
+  y?: number
+}
+
+export interface GameBarkLine {
+  id: string
+  speaker: string
+  text: string
+  trigger?: string       // condition that triggers this bark
+  category?: string      // grouping label e.g. "combat", "idle", "react_fire"
+  notes?: string
+}
+
+export interface GameVariable {
+  id: string
+  name: string
+  type: 'boolean' | 'integer' | 'string'
+  defaultValue: string
+  description?: string
+}
+
+export interface GameConversation {
+  id: string
+  name: string
+  startNodeId: string
+  nodes: GameNode[]
+}
+
+export interface GameScript {
+  conversations: GameConversation[]
+  barks: GameBarkLine[]
+  variables: GameVariable[]
+}
 
 export interface TitlePage {
   title: string
   subtitle: string   // e.g. "Written by Mickey Farmer"
   authorName: string
   contact: string    // address/email/phone in bottom-left corner
+  // TV-specific extras
+  episodeTitle?: string
+  episodeNumber?: string
+  seriesTitle?: string
+  draftDate?: string
 }
 
 // WGA standard revision color sequence
@@ -26,19 +93,19 @@ export const REVISION_COLORS = [
 
 export interface ExportSettings {
   showPageNumbers: boolean
-  includeTableOfContents: boolean   // novel
-  showSceneNumbers: boolean         // screenplay/stageplay
-  showRevisionWatermark: boolean    // screenplay/stageplay
-  includeTitlePage: boolean         // screenplay/stageplay
+  includeTableOfContents: boolean   // novel / shortstory
+  showSceneNumbers: boolean         // screenplay / stageplay / tv
+  showRevisionWatermark: boolean    // screenplay / stageplay / tv
+  includeTitlePage: boolean         // screenplay / stageplay / tv
 }
 
 export function defaultExportSettings(type: ProjectType): ExportSettings {
   return {
     showPageNumbers: true,
     includeTableOfContents: false,
-    showSceneNumbers: type === 'screenplay',
+    showSceneNumbers: type === 'screenplay' || type === 'tv',
     showRevisionWatermark: false,
-    includeTitlePage: type !== 'novel',
+    includeTitlePage: type !== 'novel' && type !== 'shortstory' && type !== 'videogame',
   }
 }
 
@@ -56,7 +123,18 @@ export interface Project {
   wordCountGoal?: number
 }
 
-export type EditorTab = 'write' | 'characters' | 'notes' | 'outline'
+// Writing stats — one entry per writing session / save event
+export interface WritingStatEntry {
+  date: string        // ISO date string YYYY-MM-DD
+  projectId: string
+  projectName: string
+  projectType: ProjectType
+  wordsAdded: number  // delta from previous session (can be 0)
+  totalWords: number  // snapshot at time of save
+  sessionMs: number   // time spent writing this session in ms (0 if unknown)
+}
+
+export type EditorTab = 'write' | 'characters' | 'notes' | 'outline' | 'stats'
 
 interface ProjectStore {
   projects: Project[]
