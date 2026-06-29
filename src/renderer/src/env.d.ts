@@ -24,5 +24,7 @@ interface Window {
     onGeminiChunk: (cb: (text: string) => void) => () => void
     geminiChat: (messages: { role: string; text: string }[], context: string) => Promise<string>
     onGeminiChatChunk: (cb: (delta: string) => void) => () => void
+    recordWritingStat: (projectPath: string, entry: import('./stores/projectStore').WritingStatEntry) => Promise<boolean>
+    loadWritingStats: (projectPath: string) => Promise<import('./stores/projectStore').WritingStatEntry[]>
   }
 }
