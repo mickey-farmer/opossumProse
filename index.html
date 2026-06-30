@@ -114,6 +114,9 @@
     .hero-pill.novel  { border-color: rgba(251,146,60,.4);   color: #fdba74; }
     .hero-pill.stage  { border-color: rgba(74,222,128,.4);   color: #86efac; }
     .hero-pill.game   { border-color: rgba(244,114,182,.4);  color: #f9a8d4; }
+    .hero-cta-row {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+    }
     .hero-cta {
       display: inline-flex; align-items: center; gap: 8px;
       background: var(--accent); color: #0f0f14; font-weight: 600; font-size: 14px;
@@ -121,6 +124,13 @@
       transition: opacity .15s; box-shadow: 0 8px 24px rgba(192,132,252,.3);
     }
     .hero-cta:hover { opacity: .85; }
+    .hero-cta-download {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: transparent; color: var(--text); font-weight: 600; font-size: 14px;
+      padding: 12px 24px; border-radius: 8px; text-decoration: none;
+      border: 1px solid var(--border); transition: border-color .15s, color .15s;
+    }
+    .hero-cta-download:hover { border-color: var(--accent); color: var(--accent); }
 
     .hero-feature-grid {
       display: grid; grid-template-columns: repeat(3, 1fr);
@@ -391,7 +401,10 @@
     <span class="hero-pill">🤖 Gemini AI</span>
     <span class="hero-pill">📊 Writing Stats</span>
   </div>
-  <a href="#overview" class="hero-cta">Read the Docs ↓</a>
+  <div class="hero-cta-row">
+    <a href="#overview" class="hero-cta">Read the Docs ↓</a>
+    <a href="https://github.com/mickey-farmer/opossumProse/releases/latest" class="hero-cta-download" target="_blank" rel="noopener">⬇ Download</a>
+  </div>
 
   <div class="hero-feature-grid">
     <div class="hero-card">
