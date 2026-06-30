@@ -47,4 +47,6 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('record-writing-stat', projectPath, entry),
   loadWritingStats: (projectPath: string) =>
     ipcRenderer.invoke('load-writing-stats', projectPath),
+  getApiKey: () => ipcRenderer.invoke('get-api-key'),
+  setApiKey: (key: string) => ipcRenderer.invoke('set-api-key', key),
 })

@@ -47,6 +47,10 @@ export default function Dashboard(): JSX.Element {
   const [loading, setLoading] = useState(true)
   const [firstRun, setFirstRun] = useState(false)
   const [projectsDir, setProjectsDir] = useState('')
+  const [showSettings, setShowSettings] = useState(false)
+  const [apiKey, setApiKeyState] = useState('')
+  const [apiKeyInput, setApiKeyInput] = useState('')
+  const [apiKeySaved, setApiKeySaved] = useState(false)
 
   useEffect(() => {
     async function init(): Promise<void> {
@@ -60,10 +64,25 @@ export default function Dashboard(): JSX.Element {
       setProjectsDir(dir)
       const list = await window.api.listProjects()
       setProjects(list)
+      const key = await window.api.getApiKey()
+      setApiKeyState(key)
       setLoading(false)
     }
     init()
   }, [setProjects])
+
+  async function handleSaveApiKey(): Promise<void> {
+    await window.api.setApiKey(apiKeyInput.trim())
+    setApiKeyState(apiKeyInput.trim())
+    setApiKeySaved(true)
+    setTimeout(() => setApiKeySaved(false), 2000)
+  }
+
+  function openSettings(): void {
+    setApiKeyInput(apiKey)
+    setApiKeySaved(false)
+    setShowSettings(true)
+  }
 
   async function handlePickFolder(): Promise<void> {
     const dir = await window.api.pickProjectsDir()
@@ -174,6 +193,13 @@ export default function Dashboard(): JSX.Element {
             ⚙ Folder
           </button>
           <button
+            onClick={openSettings}
+            title="Settings"
+            className={`text-xs px-2 py-1.5 rounded-lg transition-colors ${apiKey ? 'text-gray-400 hover:text-gray-700 hover:bg-gray-100' : 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 font-medium'}`}
+          >
+            {apiKey ? '⚙ Settings' : '⚠ API Key'}
+          </button>
+          <button
             onClick={openModal}
             className="bg-opossum-600 hover:bg-opossum-700 text-white text-sm font-medium px-4 py-1.5 rounded-lg transition-colors"
           >
@@ -194,6 +220,57 @@ export default function Dashboard(): JSX.Element {
           <ProjectGrid projects={projects} onOpen={openProject} />
         )}
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-[440px] p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">Settings</h2>
+            <p className="text-sm text-gray-500 mb-5">Configure OpossumProse to fit your workflow.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Gemini API Key
+                </label>
+                <p className="text-xs text-gray-400 mb-2">
+                  Required for AI writing, chat, and continuity features. Get a free key at{' '}
+                  <span
+                    className="text-opossum-600 cursor-pointer hover:underline"
+                    onClick={() => window.open('https://aistudio.google.com/app/apikey', '_blank')}
+                  >
+                    aistudio.google.com
+                  </span>
+                  .
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={apiKeyInput}
+                    onChange={(e) => { setApiKeyInput(e.target.value); setApiKeySaved(false) }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveApiKey()}
+                    placeholder="AIza…"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-opossum-500 font-mono"
+                  />
+                  <button
+                    onClick={handleSaveApiKey}
+                    disabled={!apiKeyInput.trim()}
+                    className="bg-opossum-600 hover:bg-opossum-700 disabled:bg-gray-300 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {apiKeySaved ? 'Saved ✓' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <button onClick={() => setShowSettings(false)} className="text-sm text-gray-600 hover:text-gray-900 px-4 py-2 rounded-lg">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Project Modal */}
       {showNewProject && (

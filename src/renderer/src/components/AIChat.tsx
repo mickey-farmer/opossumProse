@@ -66,11 +66,13 @@ export default function AIChat({ projectName, getContext, onClose }: Props): JSX
       })
       // Context only sent on first message
       contextRef.current = ''
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      const display = msg.includes('NO_API_KEY') ? 'No Gemini API key set. Add one in Settings on the Dashboard.' : 'Something went wrong. Please try again.'
       setMessages((prev) => {
         const next = [...prev]
         const last = next[next.length - 1]
-        if (last?.streaming) next[next.length - 1] = { role: 'assistant', text: 'Something went wrong. Please try again.', streaming: false }
+        if (last?.streaming) next[next.length - 1] = { role: 'assistant', text: display, streaming: false }
         return next
       })
     } finally {

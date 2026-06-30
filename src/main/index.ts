@@ -274,11 +274,16 @@ app.whenReady().then(() => {
     return filePath
   })
 
+  // ── API key settings ──────────────────────────────────────────────
+  ipcMain.handle('get-api-key', () => (store.get('geminiApiKey') as string) || '')
+  ipcMain.handle('set-api-key', (_e, key: string) => { store.set('geminiApiKey', key.trim()); return true })
+
   // ── Gemini AI ─────────────────────────────────────────────────────
-  const GEMINI_API_KEY = 'REDACTED_API_KEY'
+  function getApiKey(): string { return (store.get('geminiApiKey') as string) || '' }
 
   // ── Gemini AI writer (streaming via SSE back to renderer) ─────────
   ipcMain.handle('gemini-write', async (event, prompt: string, context: string, mode: string) => {
+    if (!getApiKey()) throw new Error('NO_API_KEY')
     const isScript = mode === 'screenplay' || mode === 'stageplay'
 
     const systemPrompt = isScript
@@ -319,7 +324,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
       let fullText = ''
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/gemini-3.5-flash:generateContent?key=${getApiKey()}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
         timeout: 60000
@@ -359,6 +364,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
 
   // ── Gemini AI continuity checker ──────────────────────────────────
   ipcMain.handle('gemini-check', async (_e, _projectPath: string, content: string, type: string) => {
+    if (!getApiKey()) throw new Error('NO_API_KEY')
     const isScript = type === 'screenplay' || type === 'stageplay'
     const systemPrompt = isScript
       ? `You are a screenplay continuity checker. Analyze the provided screenplay content and identify issues such as: character name inconsistencies (same character referred to by different names), impossible timeline jumps, location name inconsistencies, and prop/wardrobe continuity errors. Return ONLY valid JSON, no markdown.`
@@ -376,7 +382,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
     return new Promise((resolve) => {
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/gemini-3.5-flash:generateContent?key=${getApiKey()}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
       }, (res) => {
@@ -401,6 +407,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
 
   // ── Gemini chat (streaming) ───────────────────────────────────────
   ipcMain.handle('gemini-chat', async (event, messages: { role: string; text: string }[], context: string) => {
+    if (!getApiKey()) throw new Error('NO_API_KEY')
     const systemInstruction = `You are a creative writing assistant embedded in OpossumProse, a writing tool for screenplays, stage plays, and novels. You have access to the user's current work and help them brainstorm, develop characters, fix dialogue, explore themes, and anything else related to their writing. Be conversational, specific, and concise.`
 
     const contents: { role: string; parts: { text: string }[] }[] = []
@@ -429,7 +436,7 @@ Output ONLY the chapter body text — no chapter title, no preamble, no explanat
       let fullText = ''
       const req = https.request({
         hostname: 'generativelanguage.googleapis.com',
-        path: `/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`,
+        path: `/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${getApiKey()}`,
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
         timeout: 60000

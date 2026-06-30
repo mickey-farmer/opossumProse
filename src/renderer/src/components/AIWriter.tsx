@@ -104,7 +104,8 @@ export default function AIWriter({ mode, projectName, contextText, chapterTitle,
     } catch (err) {
       cleanupRef.current?.()
       cleanupRef.current = null
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg.includes('NO_API_KEY') ? 'No Gemini API key set. Add one in Settings on the Dashboard.' : msg || 'Something went wrong. Please try again.')
     } finally {
       setGenerating(false)
     }

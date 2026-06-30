@@ -39,8 +39,9 @@ export default function ContinuityChecker({ onClose, getContent, projectPath, pr
       const result = await window.api.geminiCheck(projectPath, content, projectType)
       setIssues(result.issues ?? [])
       setRan(true)
-    } catch {
-      setError('Something went wrong. Check your connection and try again.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(msg.includes('NO_API_KEY') ? 'No Gemini API key set. Add one in Settings on the Dashboard.' : 'Something went wrong. Check your connection and try again.')
     }
     setLoading(false)
   }

@@ -26,5 +26,7 @@ interface Window {
     onGeminiChatChunk: (cb: (delta: string) => void) => () => void
     recordWritingStat: (projectPath: string, entry: import('./stores/projectStore').WritingStatEntry) => Promise<boolean>
     loadWritingStats: (projectPath: string) => Promise<import('./stores/projectStore').WritingStatEntry[]>
+    getApiKey: () => Promise<string>
+    setApiKey: (key: string) => Promise<boolean>
   }
 }
